@@ -22,10 +22,9 @@ on conflict (business_id,user_id) do nothing;
 
 -- Signed-out visitors may browse approved products, but never RFQ data or private helpers.
 set local role anon;
-select is(
-  (select count(*)::bigint from public.rfqs where id='30000000-0000-4000-8000-000000000001'),
-  0::bigint,
-  'anonymous visitors cannot read RFQs'
+select ok(
+  not has_table_privilege('anon','public.rfqs','SELECT'),
+  'anonymous visitors have no table-level access to RFQs'
 );
 select ok(
   not has_function_privilege('anon','private.can_view_rfq(uuid)','EXECUTE'),
