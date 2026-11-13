@@ -29,6 +29,11 @@ drop policy if exists products_select_public_active on public.products;
 create policy products_select_public_active on public.products for select to anon,authenticated
 using (is_active and private.is_approved_supplier(business_id));
 
+-- Explicit Data API grants: RLS controls rows; grants control whether the API can reach the table.
+revoke all on table public.products from public, anon, authenticated;
+grant select on table public.products to anon, authenticated;
+grant insert, update, delete on table public.products to authenticated;
+
 create or replace function public.validate_rfq_item()
 returns trigger language plpgsql set search_path=''
 as $
