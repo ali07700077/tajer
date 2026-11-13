@@ -9,6 +9,9 @@ export type CompanyProduct = {
   price: number;
   retail_price: number | null;
   is_retail_available: boolean;
+  sample_available: boolean;
+  sample_price: number | null;
+  sample_max_quantity: number;
   min_order_quantity: number;
   image_path: string | null;
   is_active: boolean;
@@ -22,7 +25,7 @@ function client() {
 
 export async function getCompanyProducts(businessId: string): Promise<CompanyProduct[]> {
   const { data, error } = await client().from("products")
-    .select("id,business_id,name,description,price,retail_price,is_retail_available,min_order_quantity,image_path,is_active,created_at")
+    .select("id,business_id,name,description,price,retail_price,is_retail_available,sample_available,sample_price,sample_max_quantity,min_order_quantity,image_path,is_active,created_at")
     .eq("business_id", businessId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -36,6 +39,9 @@ export async function createCompanyProduct(input: {
   price: number;
   retailPrice?: number | null;
   isRetailAvailable?: boolean;
+  sampleAvailable?: boolean;
+  samplePrice?: number | null;
+  sampleMaxQuantity?: number;
   minOrderQuantity: number;
   image?: File | null;
 }): Promise<void> {
@@ -70,6 +76,9 @@ export async function createCompanyProduct(input: {
     price: input.price,
     retail_price: input.isRetailAvailable ? input.retailPrice : null,
     is_retail_available: Boolean(input.isRetailAvailable),
+    sample_available: Boolean(input.sampleAvailable),
+    sample_price: input.sampleAvailable ? input.samplePrice : null,
+    sample_max_quantity: input.sampleMaxQuantity ?? 1,
     min_order_quantity: input.minOrderQuantity,
     image_path: imagePath,
     is_active: false,
@@ -81,7 +90,7 @@ export async function createCompanyProduct(input: {
 }
 
 export async function updateCompanyProduct(productId: string, input: {
-  name: string; description: string; price: number; retailPrice?: number | null; isRetailAvailable?: boolean; minOrderQuantity: number;
+  name: string; description: string; price: number; retailPrice?: number | null; isRetailAvailable?: boolean; sampleAvailable?: boolean; samplePrice?: number | null; sampleMaxQuantity?: number; minOrderQuantity: number;
 }): Promise<void> {
   const { error } = await client().from("products").update({
     name: input.name.trim(),
