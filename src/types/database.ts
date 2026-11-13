@@ -566,6 +566,55 @@ export type Database = {
         }
         Relationships: []
       }
+      rfq_items: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          quantity: number
+          rfq_id: string
+          supplier_business_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity: number
+          rfq_id: string
+          supplier_business_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity?: number
+          rfq_id?: string
+          supplier_business_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rfq_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfq_items_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rfq_items_supplier_business_id_fkey"
+            columns: ["supplier_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rfq_offers: {
         Row: {
           created_at: string
@@ -577,6 +626,7 @@ export type Database = {
           rfq_id: string
           status: string
           supplier_business_id: string
+          total_price: number | null
           unit_price: number
           updated_at: string
         }
@@ -590,6 +640,7 @@ export type Database = {
           rfq_id: string
           status?: string
           supplier_business_id: string
+          total_price?: number | null
           unit_price: number
           updated_at?: string
         }
@@ -603,6 +654,7 @@ export type Database = {
           rfq_id?: string
           status?: string
           supplier_business_id?: string
+          total_price?: number | null
           unit_price?: number
           updated_at?: string
         }
@@ -625,6 +677,7 @@ export type Database = {
       }
       rfqs: {
         Row: {
+          awarded_offer_id: string | null
           buyer_business_id: string
           created_at: string
           deadline: string | null
@@ -637,6 +690,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          awarded_offer_id?: string | null
           buyer_business_id: string
           created_at?: string
           deadline?: string | null
@@ -649,6 +703,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          awarded_offer_id?: string | null
           buyer_business_id?: string
           created_at?: string
           deadline?: string | null
@@ -789,6 +844,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_rfq_offer: { Args: { p_offer_id: string }; Returns: undefined }
       create_business: {
         Args: {
           p_business_type: Database["public"]["Enums"]["business_type"]
@@ -796,6 +852,15 @@ export type Database = {
           p_governorate_id: string
           p_name_ar: string
           p_phone?: string
+        }
+        Returns: string
+      }
+      create_rfq_for_product: {
+        Args: {
+          p_buyer_business_id: string
+          p_notes?: string
+          p_product_id: string
+          p_quantity: number
         }
         Returns: string
       }
@@ -809,6 +874,16 @@ export type Database = {
       has_permission: { Args: { p_key: string }; Returns: boolean }
       is_business_member: { Args: { p_business_id: string }; Returns: boolean }
       my_permissions: { Args: never; Returns: string[] }
+      submit_rfq_offer: {
+        Args: {
+          p_delivery_days: number
+          p_notes?: string
+          p_rfq_id: string
+          p_supplier_business_id: string
+          p_total_price: number
+        }
+        Returns: string
+      }
       write_audit_log: {
         Args: {
           p_action: string
