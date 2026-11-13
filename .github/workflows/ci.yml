@@ -14,10 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          # No npm cache: this repository does not currently commit a lockfile.
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
