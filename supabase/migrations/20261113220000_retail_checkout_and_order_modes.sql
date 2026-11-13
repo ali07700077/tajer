@@ -98,6 +98,14 @@ begin
     if not v_product.is_active or not v_product.is_retail_available or v_product.retail_price is null then
       raise exception 'أحد المنتجات لم يعد متاحاً للبيع بالمفرد';
     end if;
+    if not exists (
+      select 1 from public.businesses b
+      where b.id=v_product.business_id
+        and b.business_type='supplier'::public.business_type
+        and b.is_active and b.verification_status='approved'::public.verification_status
+    ) then
+      raise exception 'المورد غير معتمد أو غير نشط';
+    end if;
     if v_quantity > v_product.stock_quantity then raise exception 'الكمية المطلوبة تتجاوز المخزون المتاح'; end if;
   end loop;
 

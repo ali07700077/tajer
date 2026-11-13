@@ -3,7 +3,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(25);
 
 insert into auth.users
   (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
@@ -137,6 +137,49 @@ select ok(
   (select relrowsecurity from pg_class where oid='public.orders'::regclass)
   and (select relrowsecurity from pg_class where oid='public.order_items'::regclass),
   'orders and order items enforce row level security'
+);
+
+
+-- A personal retail buyer may buy below the wholesale MOQ; the server prices from retail_price.
+update public.products
+set retail_price=1250, is_retail_available=true, stock_quantity=10
+where id='20000000-0000-4000-8000-000000000001';
+
+set local role authenticated;
+set local request.jwt.claim.sub = '90000000-0000-4000-8000-000000000001';
+select is(
+  jsonb_array_length(public.create_retail_orders(
+    '[{"product_id":"20000000-0000-4000-8000-000000000001","quantity":2}]'::jsonb,
+    'بغداد، الكرادة، شارع ١'
+  )),
+  1,
+  'retail checkout creates one supplier order without applying wholesale MOQ'
+);
+select is(
+  (select count(*)::bigint from public.orders
+   where buyer_user_id='90000000-0000-4000-8000-000000000001' and order_type='b2c'),
+  1::bigint,
+  'retail order is owned by the authenticated personal buyer'
+);
+select is(
+  (select unit_price from public.order_items oi join public.orders o on o.id=oi.order_id
+   where o.buyer_user_id='90000000-0000-4000-8000-000000000001' and o.order_type='b2c'
+   limit 1),
+  1250::numeric,
+  'retail order snapshots the retail unit price, not the wholesale price'
+);
+select is(
+  (select total_amount from public.orders
+   where buyer_user_id='90000000-0000-4000-8000-000000000001' and order_type='b2c'
+   limit 1),
+  2500::numeric,
+  'retail order total is calculated on the server'
+);
+reset role;
+select is(
+  (select stock_quantity from public.products where id='20000000-0000-4000-8000-000000000001'),
+  8,
+  'retail checkout atomically reserves stock'
 );
 
 select * from finish();
