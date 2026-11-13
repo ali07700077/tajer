@@ -17,5 +17,22 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Prepare Supabase environment
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ]; then
+            echo "::error::Missing GitHub Actions secret VITE_SUPABASE_URL"
+            exit 1
+          fi
+          if [ -z "$VITE_SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "::error::Missing GitHub Actions secret VITE_SUPABASE_PUBLISHABLE_KEY"
+            exit 1
+          fi
+          {
+            printf 'VITE_SUPABASE_URL=%s\\n' "$VITE_SUPABASE_URL"
+            printf 'VITE_SUPABASE_PUBLISHABLE_KEY=%s\\n' "$VITE_SUPABASE_PUBLISHABLE_KEY"
+          } > .env.production
       - name: Typecheck and production build
         run: npm run build
