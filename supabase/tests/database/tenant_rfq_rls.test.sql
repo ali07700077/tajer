@@ -3,7 +3,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(15);
 
 insert into auth.users
   (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
@@ -48,6 +48,17 @@ select is(
   'anonymous visitors can read active products from approved suppliers'
 );
 reset role;
+
+select ok(
+  has_column_privilege('authenticated','public.products','retail_price','INSERT')
+  and has_column_privilege('authenticated','public.products','is_retail_available','INSERT'),
+  'authenticated suppliers can insert retail pricing fields subject to product RLS'
+);
+select ok(
+  has_column_privilege('authenticated','public.products','retail_price','UPDATE')
+  and has_column_privilege('authenticated','public.products','is_retail_available','UPDATE'),
+  'authenticated suppliers can update retail pricing fields subject to product RLS'
+);
 
 -- Supplier A sees the RFQ and only the item assigned to Supplier A.
 set local role authenticated;
