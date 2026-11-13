@@ -4,6 +4,7 @@ import { signInWithEmail } from "./lib/auth";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
 import AccountCenter from "./components/AccountCenter";
 import CompanyDashboard from "./components/CompanyDashboard";
+import RfqWorkspace from "./components/RfqWorkspace";
 
 type Section = "overview" | "products" | "rfqs" | "orders" | "suppliers" | "businesses" | "company";
 type Product = { id: string; name: string; category: string; price: number; min: number; stock: string; color: string; initials: string; };
@@ -119,21 +120,8 @@ export default function App() {
           <ProductGrid items={products.slice(0, 3)} onAdd={addToCart} />
           <div className="lower-grid"><div className="panel"><div className="panel-head"><h3>كيف يعمل تاجر؟</h3><span className="muted">3 خطوات</span></div><Activity title="1. اكتشف المنتجات" sub="ابحث في كتالوج الموردين وقارن الخيارات." time="01" /><Activity title="2. أرسل طلب عرض سعر" sub="حدد الكميات وأضف ملاحظاتك للمورد." time="02" /><Activity title="3. تفاوض وأكمل الطلب" sub="راجع عروض الموردين واتفق على التفاصيل." time="03" /></div><div className="panel callout"><div className="callout-icon">✦</div><h3>هل أنت مورّد؟</h3><p>جهّز ملف شركتك وأضف منتجاتك للوصول إلى تجار الجملة في العراق.</p><button className="outline" onClick={() => setSection("suppliers")}>ملف الموردين</button></div></div>
         </>}
-        {section === "products" && <>
-          {catalogLoading && <div className="notice">جارٍ تحميل الكتالوج من قاعدة البيانات...</div>}
-          {!catalogLoading && products.length === 0 && <div className="notice">الكتالوج فارغ حالياً؛ المنتجات التجريبية أزيلت حتى لا تظهر كأنها منتجات حقيقية.</div>}
-          <div className="toolbar"><input className="search" placeholder="ابحث عن منتج أو تصنيف..." value={search} onChange={e => setSearch(e.target.value)} /><select aria-label="التصنيف" value={category} onChange={e => setCategory(e.target.value)}><option>الكل</option><option>إلكترونيات</option><option>إكسسوارات الهاتف</option><option>أجهزة ذكية</option><option>منزل وإنارة</option></select><button className="outline" onClick={() => { setSearch(""); setCategory("الكل"); }}>مسح الفلاتر</button></div>
-          <ProductGrid items={filtered} onAdd={addToCart} />
-        </>}
-        {section === "rfqs" && <section className="panel"><div className="panel-head"><div><h3>طلب عرض سعر جديد</h3><span className="muted">راجع الكميات قبل إرسال الطلب للموردين</span></div><b>{cart.length} منتجات</b></div>
-          {!cart.length ? <Empty title="سلة طلباتك فارغة" desc="أضف منتجات من الكتالوج لتجهيز طلب عرض سعر." action={() => setSection("products")} /> : <>
-            {cart.map(line => <div className="activity" key={line.product.id}><i/><div><b>{line.product.name}</b><small>الحد الأدنى {line.product.min} قطعة · {money(line.product.price)} للقطعة تقديرياً</small></div><input aria-label="الكمية" type="number" min={line.product.min} step={line.product.min} value={line.quantity} onChange={e => changeQuantity(line.product.id, Number(e.target.value))} style={{width:90,padding:8,border:"1px solid #dfe6ec",borderRadius:8}}/><button className="outline" onClick={() => setCart(current => current.filter(x => x.product.id !== line.product.id))}>حذف</button></div>)}
-            <div className="panel-head"><b>القيمة التقديرية: {money(cartTotal)}</b><span className="muted">السعر النهائي يحدده المورد</span></div>
-            <textarea className="search" rows={3} placeholder="ملاحظات للمورد: المدينة، موعد التسليم، المواصفات..." value={rfqNote} onChange={e => setRfqNote(e.target.value)} style={{width:"100%",resize:"vertical"}}/>
-            <button className="primary" disabled={sending} onClick={submitRfq}>{sending ? "جارٍ تجهيز الطلب..." : "تجهيز طلب عرض السعر"}</button>
-            {rfqSent && <p className="muted">تم تجهيز معاينة الطلب. الإرسال الفعلي يتطلب تسجيل الدخول وربط منشأتك.</p>}
-          </>}
-        </section>}
+        {section === "products" && <RfqWorkspace mode="catalog" />}
+        {section === "rfqs" && <RfqWorkspace mode="dashboard" />}
         {section === "businesses" && <AccountCenter />}
         {section === "company" && <CompanyDashboard />}
         {section === "orders" && <Empty title="إدارة الطلبات" desc="ستظهر هنا الطلبات المؤكدة وحالات التجهيز والتسليم بعد تفعيل دورة الطلب." />}
