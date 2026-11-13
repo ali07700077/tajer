@@ -43,7 +43,7 @@ export default function RfqWorkspace({ mode }: { mode: "catalog" | "dashboard" }
 
   async function loadCatalog() {
     const {data,error}=await db().from("products")
-      .select("id,business_id,name,description,price,min_order_quantity,stock_quantity,category:categories(name_ar)")
+      .select("id,business_id,name,description,price,min_order_quantity,stock_quantity,category:categories(name_ar),price_tiers:product_price_tiers(id,min_quantity,unit_price)")
       .eq("is_active",true)
       .order("created_at",{ascending:false});
     if(error) throw error;

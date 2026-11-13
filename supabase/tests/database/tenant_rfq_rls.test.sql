@@ -3,7 +3,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(20);
 
 insert into auth.users
   (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
@@ -112,6 +112,31 @@ select ok(
 select ok(
   not has_function_privilege('anon','public.submit_rfq_offer(uuid,uuid,numeric,integer,text)','EXECUTE'),
   'anonymous visitors cannot submit RFQ offers'
+);
+
+
+select ok(
+  (select is_nullable='YES' from information_schema.columns
+   where table_schema='public' and table_name='orders' and column_name='buyer_business_id'),
+  'retail orders may omit a buyer business'
+);
+select ok(
+  exists (select 1 from information_schema.columns where table_schema='public' and table_name='orders' and column_name='buyer_user_id')
+  and exists (select 1 from information_schema.columns where table_schema='public' and table_name='orders' and column_name='order_type'),
+  'orders distinguish personal buyers from business buyers'
+);
+select ok(
+  has_function_privilege('authenticated','public.create_retail_orders(jsonb,text)','EXECUTE'),
+  'authenticated users can create retail orders through the validated RPC'
+);
+select ok(
+  not has_function_privilege('anon','public.create_retail_orders(jsonb,text)','EXECUTE'),
+  'anonymous users cannot create retail orders'
+);
+select ok(
+  (select relrowsecurity from pg_class where oid='public.orders'::regclass)
+  and (select relrowsecurity from pg_class where oid='public.order_items'::regclass),
+  'orders and order items enforce row level security'
 );
 
 select * from finish();

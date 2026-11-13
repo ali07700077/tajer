@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getPublicCatalog, type CatalogProduct } from "../lib/catalog";
+import { createRetailOrders } from "../lib/retail-orders";
 
 const money = (value: number) => new Intl.NumberFormat("en-US").format(value) + " د.ع";
 
@@ -11,6 +12,8 @@ export default function RetailCatalog() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -27,6 +30,16 @@ export default function RetailCatalog() {
   ), [products, search]);
   const count = cart.reduce((sum, line) => sum + line.quantity, 0);
   const total = cart.reduce((sum, line) => sum + line.quantity * Number(line.product.retail_price), 0);
+
+  async function checkout() {
+    setCheckoutBusy(true); setMessage("");
+    try {
+      const orders = await createRetailOrders(cart.map(line => ({ product_id: line.product.id, quantity: line.quantity })), deliveryAddress);
+      setCart([]); setDeliveryAddress("");
+      setMessage(`تم إنشاء ${orders.length} طلب مفرد بنجاح. يمكنك متابعة الطلبات من قسم الطلبات.`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "تعذر إتمام طلب المفرد."); }
+    finally { setCheckoutBusy(false); }
+  }
 
   function add(product: CatalogProduct) {
     setCart(current => {
@@ -54,6 +67,20 @@ export default function RetailCatalog() {
           <button className="primary rfq-full" onClick={() => add(product)}>＋ أضف للسلة</button>
         </div>
       </article>)}</div>}
-    <div className="retail-checkout-note"><b>الخطوة التالية في دورة B2C</b><span>السلة الحالية للمعاينة. إنشاء طلب المفرد والدفع والتوصيل يحتاج استكمال تكامل الطلبات والدفع قبل تفعيل الشراء الفعلي.</span></div>
+    <div className="retail-checkout-note">
+      <b>إتمام طلب المفرد · B2C</b>
+      {cart.length === 0 ? <span>أضف المنتجات إلى السلة لبدء الطلب المباشر. لا يدخل هذا المسار في RFQ أو MOQ الجملة.</span> : <>
+        <div className="retail-cart-lines">{cart.map(line => <div className="retail-cart-line" key={line.product.id}>
+          <span>{line.product.name} · {money(Number(line.product.retail_price))}</span>
+          <div><button className="outline" aria-label="تقليل الكمية" onClick={() => setCart(current => current.flatMap(item => item.product.id !== line.product.id ? [item] : item.quantity <= 1 ? [] : [{...item,quantity:item.quantity-1}]))}>−</button>
+          <b>{line.quantity}</b>
+          <button className="outline" aria-label="زيادة الكمية" disabled={line.quantity >= line.product.stock_quantity} onClick={() => add(line.product)}>＋</button></div>
+        </div>)}</div>
+        <label>عنوان التوصيل<input value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="المحافظة، المنطقة، الشارع، أقرب نقطة دالة" /></label>
+        <div><b>الإجمالي: {money(total)}</b></div>
+        <button className="primary" disabled={checkoutBusy || deliveryAddress.trim().length < 8} onClick={() => void checkout()}>{checkoutBusy ? "جارٍ إنشاء الطلب..." : "تأكيد طلب المفرد"}</button>
+        <small>يتطلب تسجيل الدخول. تُثبت الأسعار والمخزون داخل قاعدة البيانات، وتُقسّم السلة تلقائياً إلى طلب مستقل لكل مورد.</small>
+      </>}
+    </div>
   </section>;
 }
