@@ -1,6 +1,7 @@
 -- Phase 3: product-scoped RFQs, supplier quotations, buyer acceptance and row isolation.
 alter table public.rfqs add column if not exists awarded_offer_id uuid;
 alter table public.rfq_offers add column if not exists total_price numeric(14,2);
+alter table public.rfq_offers drop constraint if exists rfq_offers_total_price_positive;
 alter table public.rfq_offers add constraint rfq_offers_total_price_positive check (total_price is null or total_price > 0) not valid;
 
 create table if not exists public.rfq_items (
