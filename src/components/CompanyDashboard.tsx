@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCurrentSession, onSessionChange } from "../lib/auth";
 import { getMyBusinesses, type BusinessSummary } from "../lib/businesses";
-import { createCompanyProduct, deleteCompanyProduct, getCompanyProducts, updateCompanyProduct, type CompanyProduct } from "../lib/company-products";
+import { createCompanyProduct, deleteCompanyProduct, getCompanyProductImageUrl, getCompanyProducts, updateCompanyProduct, type CompanyProduct } from "../lib/company-products";
 import { supabase } from "../lib/supabase";
 
 const money = (value: number) => new Intl.NumberFormat("en-US").format(value) + " د.ع";
@@ -11,6 +11,7 @@ export default function CompanyDashboard() {
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [products, setProducts] = useState<CompanyProduct[]>([]);
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -32,7 +33,7 @@ export default function CompanyDashboard() {
 
   async function loadProducts(businessId: string) {
     setLoading(true);
-    try { setProducts(await getCompanyProducts(businessId)); }
+    try { const rows = await getCompanyProducts(businessId); setProducts(rows); const urls = await Promise.all(rows.filter(p => p.image_path).map(async p => [p.id, await getCompanyProductImageUrl(p.image_path!)] as const)); setImageUrls(Object.fromEntries(urls.filter((entry): entry is readonly [string, string] => Boolean(entry[1])))); }
     catch (e) { setProducts([]); setMessage(e instanceof Error ? e.message : "تعذر تحميل المنتجات."); }
     finally { setLoading(false); }
   }
@@ -118,7 +119,7 @@ export default function CompanyDashboard() {
         <button className="primary" disabled={busy} onClick={submitProduct}>{busy ? "جارٍ الحفظ..." : editing ? "حفظ التعديلات" : "إضافة المنتج"}</button>
       </div>}
       <div className="company-products-head"><h4>منتجات الشركة</h4><button className="outline" onClick={() => selected && loadProducts(selected.id)}>تحديث القائمة</button></div>
-      {loading ? <p>جارٍ تحميل المنتجات...</p> : products.length === 0 ? <div className="empty">لا توجد منتجات لهذه الشركة بعد. أضف أول منتج إلى كتالوج الجملة.</div> : <div className="company-product-list">{products.map(p => <article className="company-product-row" key={p.id}><div className="product-thumb">{p.image_path ? "▧" : "▦"}</div><div className="company-product-main"><b>{p.name}</b><small>{p.description || "لا يوجد وصف"} · MOQ: {p.min_order_quantity}</small><strong>{money(Number(p.price))}</strong></div><span className="draft-pill">{p.is_active ? "مفعّل" : "مسودة"}</span><button className="outline" disabled={busy} onClick={() => startEdit(p)}>تعديل</button><button className="outline danger-outline" disabled={busy} onClick={() => removeProduct(p)}>حذف</button></article>)}</div>}
+      {loading ? <p>جارٍ تحميل المنتجات...</p> : products.length === 0 ? <div className="empty">لا توجد منتجات لهذه الشركة بعد. أضف أول منتج إلى كتالوج الجملة.</div> : <div className="company-product-list">{products.map(p => <article className="company-product-row" key={p.id}><div className="product-thumb">{imageUrls[p.id] ? <img src={imageUrls[p.id]} alt={p.name} /> : "▦"}</div><div className="company-product-main"><b>{p.name}</b><small>{p.description || "لا يوجد وصف"} · MOQ: {p.min_order_quantity}</small><strong>{money(Number(p.price))}</strong></div><span className="draft-pill">{p.is_active ? "مفعّل" : "مسودة"}</span><button className="outline" disabled={busy} onClick={() => startEdit(p)}>تعديل</button><button className="outline danger-outline" disabled={busy} onClick={() => removeProduct(p)}>حذف</button></article>)}</div>}
     </>}
     {message && <p className="notice account-message">{message}</p>}
   </section>;
