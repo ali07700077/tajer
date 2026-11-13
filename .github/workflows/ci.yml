@@ -41,7 +41,7 @@ jobs:
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 3.0.0
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -54,6 +54,9 @@ jobs:
           supabase start
           supabase db reset
           supabase status -o env >> "$GITHUB_ENV"
+
+      - name: Run database unit and RLS tests
+        run: supabase test db
 
       - name: Run tenant isolation and RFQ lifecycle tests
         env:
