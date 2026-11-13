@@ -1,10 +1,12 @@
-import { test, expect, type APIRequestContext } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 
-const url = process.env.SUPABASE_URL!;
-const anonKey = process.env.SUPABASE_ANON_KEY!;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Supabase CLI exports API_URL / ANON_KEY / SERVICE_ROLE_KEY into GITHUB_ENV.
+// Support those names as well as explicit SUPABASE_* variables used locally.
+const url = process.env.SUPABASE_URL || process.env.API_URL || "";
+const anonKey = process.env.SUPABASE_ANON_KEY || process.env.ANON_KEY || "";
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || "";
 const rfqId = "30000000-0000-4000-8000-000000000001";
 const supplierOne = "10000000-0000-4000-8000-000000000001";
 const supplierTwo = "10000000-0000-4000-8000-000000000002";
@@ -26,17 +28,19 @@ async function createActor(admin: SupabaseClient, label: string): Promise<Actor>
 }
 
 test("company isolation and complete RFQ lifecycle", async ({ page }) => {
-  expect(url).toBeTruthy();
-  expect(anonKey).toBeTruthy();
-  expect(serviceKey).toBeTruthy();
+  expect(url, "Supabase URL must be supplied by the local Supabase CLI").toMatch(/^https?:\\/\\//);
+  expect(anonKey, "Supabase anon key is required").toBeTruthy();
+  expect(serviceKey, "Supabase service role key is required").toBeTruthy();
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const actors: Actor[] = [];
   try {
     const buyer = await createActor(admin, "buyer");
+    actors.push(buyer);
     const supplierA = await createActor(admin, "supplier-a");
+    actors.push(supplierA);
     const supplierB = await createActor(admin, "supplier-b");
-    actors.push(buyer, supplierA, supplierB);
+    actors.push(supplierB);
 
     const memberships = [
       { business_id: buyerBusiness, user_id: buyer.id, member_role: "owner" },
@@ -102,7 +106,6 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByText("سوق الجملة، أقرب إليك")).toBeVisible();
   } finally {
-    // Remove only accounts created by this run. Seed fixtures are intentionally reusable.
     for (const actor of actors) {
       await admin.auth.admin.deleteUser(actor.id);
     }
