@@ -12,11 +12,28 @@ export async function signInWithEmail(email: string, password: string) {
   return data;
 }
 
-export async function signUpWithEmail(input: { email: string; password: string; fullName: string; phone?: string }) {
+export async function signUpWithEmail(input: {
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string;
+  businessType: "buyer" | "supplier";
+  businessName: string;
+  governorateId: string;
+}) {
+  if (!import.meta.env.DEV) throw new Error("التسجيل الجديد مغلق خارج بيئة التطوير.");
   const { data, error } = await requireClient().auth.signUp({
     email: input.email.trim(),
     password: input.password,
-    options: { data: { full_name: input.fullName.trim(), phone: input.phone?.trim() ?? null } },
+    options: {
+      data: {
+        full_name: input.fullName.trim(),
+        phone: input.phone?.trim() || null,
+        business_type: input.businessType,
+        business_name: input.businessName.trim(),
+        governorate_id: input.governorateId,
+      },
+    },
   });
   if (error) throw error;
   return data;
