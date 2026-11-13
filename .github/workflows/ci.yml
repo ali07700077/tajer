@@ -4,6 +4,7 @@ on:
     branches:
       - implementation/bootstrap
       - fix/db-migrations-rls
+  workflow_dispatch:
   pull_request:
     branches:
       - main
