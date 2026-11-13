@@ -17,7 +17,7 @@ export async function createRetailOrders(items: RetailCartItem[], deliveryAddres
   const { data: auth, error: authError } = await supabase.auth.getUser();
   if (authError) throw authError;
   if (!auth.user) throw new Error("سجّل الدخول أولاً لإتمام طلب المفرد.");
-  const { data, error } = await (supabase as any).rpc("create_retail_orders", {
+  const { data, error } = await supabase.rpc("create_retail_orders", {
     p_items: items,
     p_delivery_address: deliveryAddress.trim(),
   });
