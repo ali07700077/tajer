@@ -102,3 +102,89 @@ grant select on public.rfq_offers to authenticated;
 alter table public.rfq_offers drop constraint if exists rfq_offers_one_per_supplier;
 revoke all on function public.submit_rfq_offer(uuid,uuid,numeric,integer,text) from public,anon,authenticated;
 revoke all on function public.accept_rfq_offer(uuid) from public,anon,authenticated;
+
+-- Explicit access model for the tables used by the current application.
+-- Reference data is public-read; company data remains tenant-scoped.
+drop policy if exists governorates_active_read on public.governorates;
+create policy governorates_active_read on public.governorates
+for select to anon, authenticated using (is_active);
+drop policy if exists cities_active_read on public.cities;
+create policy cities_active_read on public.cities
+for select to anon, authenticated using (is_active);
+drop policy if exists categories_active_read on public.categories;
+create policy categories_active_read on public.categories
+for select to anon, authenticated using (is_active);
+
+revoke all on table public.governorates, public.cities, public.categories from public, anon, authenticated;
+grant select on table public.governorates, public.cities, public.categories to anon, authenticated;
+
+revoke all on table public.businesses from public, anon, authenticated;
+grant select on table public.businesses to authenticated;
+grant update (name_ar, name_en, description_ar, phone, email, address_text, logo_path, city_id)
+  on table public.businesses to authenticated;
+drop policy if exists businesses_member_update on public.businesses;
+create policy businesses_member_update on public.businesses
+for update to authenticated
+using (public.has_business_role(id, array['owner'::public.member_role,'manager'::public.member_role]))
+with check (public.has_business_role(id, array['owner'::public.member_role,'manager'::public.member_role]));
+
+revoke all on table public.business_members from public, anon, authenticated;
+grant select on table public.business_members to authenticated;
+
+revoke all on table public.profiles from public, anon, authenticated;
+grant select on table public.profiles to authenticated;
+grant update (full_name, phone) on table public.profiles to authenticated;
+drop policy if exists profiles_select_self on public.profiles;
+create policy profiles_select_self on public.profiles
+for select to authenticated using (id = (select auth.uid()));
+drop policy if exists profiles_update_self on public.profiles;
+create policy profiles_update_self on public.profiles
+for update to authenticated
+using (id = (select auth.uid()))
+with check (id = (select auth.uid()));
+
+-- Product quantity tiers inherit the visibility and ownership of their product.
+drop policy if exists product_price_tiers_public_read on public.product_price_tiers;
+create policy product_price_tiers_public_read on public.product_price_tiers
+for select to anon, authenticated
+using (exists (
+  select 1 from public.products p
+  where p.id = product_id and p.is_active and private.is_approved_supplier(p.business_id)
+));
+drop policy if exists product_price_tiers_supplier_insert on public.product_price_tiers;
+create policy product_price_tiers_supplier_insert on public.product_price_tiers
+for insert to authenticated
+with check (exists (
+  select 1 from public.products p
+  where p.id = product_id
+    and public.has_business_role(p.business_id, array['owner'::public.member_role,'manager'::public.member_role])
+));
+drop policy if exists product_price_tiers_supplier_update on public.product_price_tiers;
+create policy product_price_tiers_supplier_update on public.product_price_tiers
+for update to authenticated
+using (exists (
+  select 1 from public.products p
+  where p.id = product_id
+    and public.has_business_role(p.business_id, array['owner'::public.member_role,'manager'::public.member_role])
+))
+with check (exists (
+  select 1 from public.products p
+  where p.id = product_id
+    and public.has_business_role(p.business_id, array['owner'::public.member_role,'manager'::public.member_role])
+));
+drop policy if exists product_price_tiers_supplier_delete on public.product_price_tiers;
+create policy product_price_tiers_supplier_delete on public.product_price_tiers
+for delete to authenticated
+using (exists (
+  select 1 from public.products p
+  where p.id = product_id
+    and public.has_business_role(p.business_id, array['owner'::public.member_role,'manager'::public.member_role])
+));
+
+revoke all on table public.product_price_tiers from public, anon, authenticated;
+grant select on table public.product_price_tiers to anon, authenticated;
+grant insert, update, delete on table public.product_price_tiers to authenticated;
+
+-- Business creation is guarded inside the SECURITY DEFINER function; expose it only to signed-in users.
+revoke all on function public.create_business(public.business_type, text, uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.create_business(public.business_type, text, uuid, uuid, text) to authenticated;
