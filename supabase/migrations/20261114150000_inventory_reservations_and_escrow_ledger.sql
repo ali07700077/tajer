@@ -98,8 +98,8 @@ begin
   end if;
   insert into public.escrow_ledger_entries(order_id,entry_type,amount,idempotency_key,provider_reference,metadata,actor_id)
   values(p_order_id,p_entry_type,p_amount,trim(p_idempotency_key),nullif(trim(coalesce(p_provider_reference,'')),''),coalesce(p_metadata,'{}'::jsonb),auth.uid())
-  on conflict(order_id,idempotency_key) do update set idempotency_key=excluded.idempotency_key
-  returning id into v_id;
+  on conflict(order_id,idempotency_key) do nothing;
+  select id into v_id from public.escrow_ledger_entries where order_id=p_order_id and idempotency_key=trim(p_idempotency_key);
   return v_id;
 end;
 $$;
@@ -229,7 +229,7 @@ begin
     join jsonb_array_elements(p_items) i on p.id=(i.value->>'product_id')::uuid
     order by p.business_id
   loop
-    v_order_id := gen_random_uuid();
+    v_order_id := extensions.gen_random_uuid();
     v_total := 0;
     insert into public.orders(id,buyer_business_id,buyer_user_id,supplier_business_id,order_type,status,total_amount,currency,delivery_address)
     values(v_order_id,null,v_user_id,v_supplier_id,'b2c','pending',0,'IQD',trim(p_delivery_address));
