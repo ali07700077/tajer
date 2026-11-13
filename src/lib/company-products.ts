@@ -98,6 +98,9 @@ export async function updateCompanyProduct(productId: string, input: {
     price: input.price,
     retail_price: input.isRetailAvailable ? input.retailPrice : null,
     is_retail_available: Boolean(input.isRetailAvailable),
+    sample_available: Boolean(input.sampleAvailable),
+    sample_price: input.sampleAvailable ? input.samplePrice : null,
+    sample_max_quantity: input.sampleMaxQuantity ?? 1,
     min_order_quantity: input.minOrderQuantity,
   }).eq("id", productId);
   if (error) throw error;
