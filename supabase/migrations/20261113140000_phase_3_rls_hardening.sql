@@ -151,6 +151,14 @@ using (exists (
   select 1 from public.products p
   where p.id = product_id and p.is_active and private.is_approved_supplier(p.business_id)
 ));
+drop policy if exists product_price_tiers_supplier_read on public.product_price_tiers;
+create policy product_price_tiers_supplier_read on public.product_price_tiers
+for select to authenticated
+using (exists (
+  select 1 from public.products p
+  where p.id = product_id
+    and public.has_business_role(p.business_id, array['owner'::public.member_role,'manager'::public.member_role])
+));
 drop policy if exists product_price_tiers_supplier_insert on public.product_price_tiers;
 create policy product_price_tiers_supplier_insert on public.product_price_tiers
 for insert to authenticated
