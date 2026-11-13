@@ -1,7 +1,7 @@
 -- Inventory reservation lifecycle and escrow ledger security boundary.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(12);
 select ok(
   exists(select 1 from information_schema.columns where table_schema='public' and table_name='products' and column_name='reserved_quantity'),
   'products persist the quantity held by pending checkouts'
@@ -42,5 +42,23 @@ select ok(
   exists(select 1 from pg_trigger where tgrelid='public.escrow_ledger_entries'::regclass and tgname='escrow_ledger_entries_immutable' and not tgisinternal),
   'escrow ledger rejects update and delete mutations'
 );
+
+select ok(
+  to_regprocedure('public.create_retail_orders(jsonb,text)') is not null
+  and has_function_privilege('authenticated','public.create_retail_orders(jsonb,text)','EXECUTE')
+  and not has_function_privilege('anon','public.create_retail_orders(jsonb,text)','EXECUTE'),
+  'retail checkout is exposed only to authenticated customers'
+);
+select ok(
+  has_function_privilege('authenticated','public.create_wholesale_orders(uuid,jsonb,text)','EXECUTE')
+  and not has_function_privilege('anon','public.create_wholesale_orders(uuid,jsonb,text)','EXECUTE'),
+  'wholesale checkout is exposed only to authenticated business buyers'
+);
+select ok(
+  not has_function_privilege('authenticated','public.release_expired_inventory_reservations(integer)','EXECUTE')
+  and has_function_privilege('service_role','public.release_expired_inventory_reservations(integer)','EXECUTE'),
+  'reservation expiry processing is restricted to trusted server workflows'
+);
+
 select * from finish();
 rollback;
