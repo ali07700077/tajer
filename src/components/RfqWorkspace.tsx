@@ -49,7 +49,7 @@ export default function RfqWorkspace({ mode }: { mode: "catalog" | "dashboard" }
     if(error) throw error;
     const rows=(data??[]) as any[];
     const supplierIds=Array.from(new Set(rows.map(p=>p.business_id)));
-    const {data:suppliers,error:supplierError}=supplierIds.length?await db().from("public_supplier_directory").select("id,name_ar").in("id",supplierIds):{data:[],error:null};
+    const {data:suppliers,error:supplierError}=supplierIds.length?await db().rpc("get_public_supplier_names",{p_business_ids:supplierIds}):{data:[],error:null};
     if(supplierError) throw supplierError;
     const names=Object.fromEntries((suppliers??[]).map((b:any)=>[b.id,b.name_ar]));
     setProducts(rows.map(p=>({...p,supplier_name:names[p.business_id]??"مورد معتمد"})));
@@ -71,7 +71,7 @@ export default function RfqWorkspace({ mode }: { mode: "catalog" | "dashboard" }
     setRequests(rows);
     const ids=Array.from(new Set(rows.flatMap(r=>(r.rfq_offers??[]).map(o=>o.supplier_business_id))));
     if(ids.length){
-      const {data:names,error:namesError}=await db().from("public_supplier_directory").select("id,name_ar").in("id",ids);
+      const {data:names,error:namesError}=await db().rpc("get_public_supplier_names",{p_business_ids:ids});
       if(namesError) throw namesError;
       setSupplierNames(Object.fromEntries((names??[]).map((b:any)=>[b.id,b.name_ar])));
     } else setSupplierNames({});
