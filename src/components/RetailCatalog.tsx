@@ -18,7 +18,7 @@ export default function RetailCatalog() {
   useEffect(() => {
     let alive = true;
     getPublicCatalog().then(rows => {
-      if (alive) setProducts(rows.filter(p => p.is_retail_available && p.retail_price != null && p.stock_quantity > 0));
+      if (alive) setProducts(rows.filter(p => p.is_retail_available && p.retail_price != null && p.available_quantity > 0));
     }).catch(error => {
       if (alive) setMessage(error instanceof Error ? error.message : "تعذر تحميل منتجات المفرد.");
     }).finally(() => { if (alive) setLoading(false); });
@@ -63,7 +63,7 @@ export default function RetailCatalog() {
         <div className="product-art mint"><span>{product.name.slice(0, 5)}</span><small>متاح للمفرد</small></div>
         <div className="product-info"><small>{product.category?.name_ar ?? "منتج"}</small><h3>{product.name}</h3>
           <div className="product-price">{money(Number(product.retail_price))} <span>/ القطعة</span></div>
-          <div className="product-foot"><span>المتوفر: {product.stock_quantity}</span><span className="in-stock">متاح</span></div>
+          <div className="product-foot"><span>المتوفر: {product.available_quantity}</span><span className="in-stock">متاح</span></div>
           <button className="primary rfq-full" onClick={() => add(product)}>＋ أضف للسلة</button>
         </div>
       </article>)}</div>}
@@ -74,7 +74,7 @@ export default function RetailCatalog() {
           <span>{line.product.name} · {money(Number(line.product.retail_price))}</span>
           <div><button className="outline" aria-label="تقليل الكمية" onClick={() => setCart(current => current.flatMap(item => item.product.id !== line.product.id ? [item] : item.quantity <= 1 ? [] : [{...item,quantity:item.quantity-1}]))}>−</button>
           <b>{line.quantity}</b>
-          <button className="outline" aria-label="زيادة الكمية" disabled={line.quantity >= line.product.stock_quantity} onClick={() => add(line.product)}>＋</button></div>
+          <button className="outline" aria-label="زيادة الكمية" disabled={line.quantity >= line.product.available_quantity} onClick={() => add(line.product)}>＋</button></div>
         </div>)}</div>
         <label>عنوان التوصيل<input value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="المحافظة، المنطقة، الشارع، أقرب نقطة دالة" /></label>
         <div><b>الإجمالي: {money(total)}</b></div>
