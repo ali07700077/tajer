@@ -55,7 +55,7 @@ create table if not exists public.escrow_ledger_entries (
   provider_reference text,
   idempotency_key text not null,
   metadata jsonb not null default '{}'::jsonb,
-  actor_id uuid references public.profiles(id) on delete set null,
+  actor_id uuid, -- immutable actor identifier; deliberately not FK-cascaded
   created_at timestamptz not null default now(),
   unique(order_id,idempotency_key)
 );
