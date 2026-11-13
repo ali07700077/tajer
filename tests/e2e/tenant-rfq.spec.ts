@@ -145,6 +145,28 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
     expect(wholesaleOrder.supplier_business_id).toBe(supplierOne);
     expect(Number(wholesaleOrder.total_amount)).toBe(108000);
 
+    const { data: heldRows, error: heldError } = await buyer.client
+      .from("inventory_reservations").select("quantity,status").eq("order_id", wholesaleOrder.order_id);
+    expect(heldError).toBeNull();
+    expect(heldRows).toEqual([{ quantity: 12, status: "held" }]);
+
+    const { data: committedCount, error: commitError } = await admin.rpc("confirm_inventory_reservation", {
+      p_order_id: wholesaleOrder.order_id,
+    });
+    expect(commitError).toBeNull();
+    expect(committedCount).toBe(1);
+    const { data: committedRows, error: committedError } = await buyer.client
+      .from("inventory_reservations").select("status").eq("order_id", wholesaleOrder.order_id);
+    expect(committedError).toBeNull();
+    expect(committedRows).toEqual([{ status: "committed" }]);
+    const { data: committedProduct, error: committedProductError } = await admin
+      .from("products").select("stock_quantity,reserved_quantity,available_quantity")
+      .eq("id", wholesaleProductId).single();
+    expect(committedProductError).toBeNull();
+    expect(committedProduct?.stock_quantity).toBe(18);
+    expect(committedProduct?.reserved_quantity).toBe(0);
+    expect(committedProduct?.available_quantity).toBe(18);
+
     const { data: sampleRequestId, error: sampleError } = await buyer.client.rpc("create_product_sample_request", {
       p_buyer_business_id: buyerBusiness,
       p_product_id: wholesaleProductId,
