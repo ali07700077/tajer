@@ -177,9 +177,9 @@ select is(
 );
 reset role;
 select is(
-  (select stock_quantity from public.products where id='20000000-0000-4000-8000-000000000001'),
+  (select available_quantity from public.products where id='20000000-0000-4000-8000-000000000001'),
   8,
-  'retail checkout atomically reserves stock'
+  'retail checkout atomically reserves stock while preserving physical stock'
 );
 
 
