@@ -3,8 +3,9 @@ import { getPublicCatalog, type CatalogProduct } from "./lib/catalog";
 import { signInWithEmail } from "./lib/auth";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
 import AccountCenter from "./components/AccountCenter";
+import CompanyDashboard from "./components/CompanyDashboard";
 
-type Section = "overview" | "products" | "rfqs" | "orders" | "suppliers" | "businesses";
+type Section = "overview" | "products" | "rfqs" | "orders" | "suppliers" | "businesses" | "company";
 type Product = { id: string; name: string; category: string; price: number; min: number; stock: string; color: string; initials: string; };
 const nav: { id: Section; label: string; icon: string }[] = [
   { id: "overview", label: "الرئيسية", icon: "⌂" },
@@ -13,6 +14,7 @@ const nav: { id: Section; label: string; icon: string }[] = [
   { id: "orders", label: "الطلبات", icon: "▣" },
   { id: "suppliers", label: "الموردون", icon: "♧" },
   { id: "businesses", label: "شركاتي والحساب", icon: "◉" },
+  { id: "company", label: "لوحة الشركة", icon: "▣" },
 ];
 const money = (v: number) => new Intl.NumberFormat("en-US").format(v) + " د.ع";
 type CartLine = { product: Product; quantity: number };
@@ -133,6 +135,7 @@ export default function App() {
           </>}
         </section>}
         {section === "businesses" && <AccountCenter />}
+        {section === "company" && <CompanyDashboard />}
         {section === "orders" && <Empty title="إدارة الطلبات" desc="ستظهر هنا الطلبات المؤكدة وحالات التجهيز والتسليم بعد تفعيل دورة الطلب." />}
         {section === "suppliers" && <Empty title="بوابة الموردين" desc="سيتمكن المورد من إنشاء ملف شركته وإضافة المنتجات وإدارة عروض الأسعار." action={() => setNotice("تسجيل الموردين قيد التنفيذ ضمن المرحلة التالية.")} />}
         <footer>© 2026 تاجر · منصة التجارة بالجملة في العراق <span>نسخة تطوير أولية</span></footer>
