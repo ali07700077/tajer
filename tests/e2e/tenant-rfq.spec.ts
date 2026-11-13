@@ -5,8 +5,8 @@ import { randomUUID } from "node:crypto";
 // Supabase CLI exports API_URL / ANON_KEY / SERVICE_ROLE_KEY into GITHUB_ENV.
 // Support those names as well as explicit SUPABASE_* variables used locally.
 const url = process.env.SUPABASE_URL || process.env.API_URL || "";
-const anonKey = process.env.SUPABASE_ANON_KEY || process.env.ANON_KEY || "";
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || "";
+const anonKey = process.env.SUPABASE_ANON_KEY || process.env.ANON_KEY || process.env.PUBLISHABLE_KEY || "";
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || process.env.SECRET_KEY || "";
 const rfqId = "30000000-0000-4000-8000-000000000001";
 const supplierOne = "10000000-0000-4000-8000-000000000001";
 const supplierTwo = "10000000-0000-4000-8000-000000000002";
