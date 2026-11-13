@@ -55,7 +55,11 @@ jobs:
         run: |
           supabase start
           supabase db reset
-          supabase status -o env >> "$GITHUB_ENV"
+          supabase status -o env > /tmp/supabase.env
+          cat /tmp/supabase.env >> "$GITHUB_ENV"
+          set -a
+          source /tmp/supabase.env
+          set +a
           echo "::add-mask::$SERVICE_ROLE_KEY"
           echo "::add-mask::$SECRET_KEY"
           echo "::add-mask::$S3_PROTOCOL_ACCESS_KEY_SECRET"
