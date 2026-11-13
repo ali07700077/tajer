@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { getPublicCatalog, type CatalogProduct } from "./lib/catalog";
 import { signInWithEmail } from "./lib/auth";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
@@ -24,17 +24,12 @@ export default function App() {
   const [section, setSection] = useState<Section>("overview");
   const [products, setProducts] = useState<Product[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("الكل");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [notice, setNotice] = useState("");
   const [showAuth, setShowAuth] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
-  const [rfqNote, setRfqNote] = useState("");
-  const [rfqSent, setRfqSent] = useState(false);
-  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -51,10 +46,6 @@ export default function App() {
     return () => { active = false; };
   }, []);
 
-  const filtered = useMemo(() => products.filter(p =>
-    (p.name + p.category).toLowerCase().includes(search.trim().toLowerCase()) &&
-    (category === "الكل" || p.category === category)
-  ), [search, category]);
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const cartTotal = cart.reduce((sum, line) => sum + line.quantity * line.product.price, 0);
   const title = nav.find(n => n.id === section)?.label ?? "الرئيسية";
@@ -67,9 +58,6 @@ export default function App() {
     });
     setNotice("أُضيف المنتج إلى طلب عرض السعر بالحد الأدنى للطلب.");
   }
-  function changeQuantity(id: string, quantity: number) {
-    setCart(current => current.map(line => line.product.id === id ? { ...line, quantity: Math.max(line.product.min, quantity || line.product.min) } : line));
-  }
   async function signIn() {
     if (!supabase) { setNotice("إعداد الاتصال بقاعدة Supabase غير مكتمل بعد."); return; }
     setAuthBusy(true);
@@ -80,20 +68,6 @@ export default function App() {
       setNotice(error instanceof Error ? error.message : "تعذر تسجيل الدخول.");
     } finally { setAuthBusy(false); }
   }
-  async function submitRfq() {
-    if (!cart.length) return;
-    if (!supabase) {
-      setRfqSent(true);
-      setNotice("تم تجهيز طلبك محلياً للمعاينة. لن يُحفظ في قاعدة البيانات قبل تفعيل الاتصال وتسجيل الدخول.");
-      return;
-    }
-    setSending(true);
-    // RFQ persistence will be enabled after mapping the live database schema and buyer business membership.
-    setSending(false);
-    setRfqSent(true);
-    setNotice("تم تجهيز الطلب. يلزم ربط حساب المشتري بملف المنشأة قبل الإرسال النهائي.");
-  }
-
   return <div className="app-shell" dir="rtl">
     <aside className="sidebar">
       <div className="brand"><div className="brand-mark">ت</div><div><b>تاجر</b><small>سوق الجملة العراقي</small></div></div>
