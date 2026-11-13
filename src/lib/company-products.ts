@@ -95,3 +95,9 @@ export async function deleteCompanyProduct(product: CompanyProduct): Promise<voi
     if (imageError) throw imageError;
   }
 }
+
+export async function getCompanyProductImageUrl(path: string): Promise<string | null> {
+  const { data, error } = await client().storage.from("product-images").createSignedUrl(path, 60 * 60);
+  if (error) return null;
+  return data.signedUrl;
+}
