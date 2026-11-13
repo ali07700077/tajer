@@ -126,6 +126,18 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
     });
     if (tierError) throw tierError;
 
+    const secondWholesaleProductId = randomUUID();
+    const { error: secondProductError } = await admin.from("products").insert({
+      id: secondWholesaleProductId,
+      business_id: supplierTwo,
+      name: "E2E second supplier wholesale fixture",
+      price: 12000,
+      min_order_quantity: 5,
+      stock_quantity: 20,
+      is_active: true,
+    });
+    if (secondProductError) throw secondProductError;
+
     const { data: belowMoq, error: belowMoqError } = await buyer.client.rpc("create_wholesale_orders", {
       p_buyer_business_id: buyerBusiness,
       p_items: [{ product_id: wholesaleProductId, quantity: 4 }],
@@ -136,14 +148,20 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
 
     const { data: wholesaleOrders, error: wholesaleError } = await buyer.client.rpc("create_wholesale_orders", {
       p_buyer_business_id: buyerBusiness,
-      p_items: [{ product_id: wholesaleProductId, quantity: 12 }],
+      p_items: [
+        { product_id: wholesaleProductId, quantity: 12 },
+        { product_id: secondWholesaleProductId, quantity: 12 },
+      ],
       p_delivery_address: "بغداد، الكرادة، شارع ١",
     });
     expect(wholesaleError).toBeNull();
-    expect(wholesaleOrders).toHaveLength(1);
-    const wholesaleOrder = wholesaleOrders?.[0] as { order_id: string; total_amount: number; supplier_business_id: string };
-    expect(wholesaleOrder.supplier_business_id).toBe(supplierOne);
+    expect(wholesaleOrders).toHaveLength(2);
+    const wholesaleOrder = wholesaleOrders?.find((row: any) => row.supplier_business_id === supplierOne) as { order_id: string; total_amount: number; supplier_business_id: string };
+    const secondSupplierOrder = wholesaleOrders?.find((row: any) => row.supplier_business_id === supplierTwo) as { order_id: string; total_amount: number; supplier_business_id: string };
+    expect(wholesaleOrder).toBeTruthy();
+    expect(secondSupplierOrder).toBeTruthy();
     expect(Number(wholesaleOrder.total_amount)).toBe(108000);
+    expect(Number(secondSupplierOrder.total_amount)).toBe(144000);
 
     const { data: heldRows, error: heldError } = await buyer.client
       .from("inventory_reservations").select("quantity,status").eq("order_id", wholesaleOrder.order_id);
@@ -166,6 +184,30 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
     expect(committedProduct?.stock_quantity).toBe(18);
     expect(committedProduct?.reserved_quantity).toBe(0);
     expect(committedProduct?.available_quantity).toBe(18);
+
+    const { data: ledgerEntryId, error: ledgerError } = await admin.rpc("append_escrow_ledger_entry", {
+      p_order_id: wholesaleOrder.order_id,
+      p_entry_type: "captured",
+      p_amount: 108000,
+      p_idempotency_key: "e2e-capture-" + wholesaleOrder.order_id,
+      p_provider_reference: "test-provider-reference",
+      p_metadata: { source: "playwright" },
+    });
+    expect(ledgerError).toBeNull();
+    const { data: duplicateLedgerEntryId, error: duplicateLedgerError } = await admin.rpc("append_escrow_ledger_entry", {
+      p_order_id: wholesaleOrder.order_id,
+      p_entry_type: "captured",
+      p_amount: 108000,
+      p_idempotency_key: "e2e-capture-" + wholesaleOrder.order_id,
+      p_provider_reference: "test-provider-reference",
+      p_metadata: { source: "playwright" },
+    });
+    expect(duplicateLedgerError).toBeNull();
+    expect(duplicateLedgerEntryId).toBe(ledgerEntryId);
+    const { data: buyerLedger, error: buyerLedgerError } = await buyer.client
+      .from("escrow_ledger_entries").select("entry_type,amount").eq("order_id", wholesaleOrder.order_id);
+    expect(buyerLedgerError).toBeNull();
+    expect(buyerLedger).toEqual([{ entry_type: "captured", amount: 108000 }]);
 
     const { data: sampleRequestId, error: sampleError } = await buyer.client.rpc("create_product_sample_request", {
       p_buyer_business_id: buyerBusiness,
