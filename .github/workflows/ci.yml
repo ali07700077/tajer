@@ -18,16 +18,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          # No npm cache: this repository does not currently commit a lockfile.
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      # Supabase configuration is optional at build time.
-      # The browser client stays disabled until a real public URL/key is configured.
-      - name: TypeScript check (temporary non-blocking)
-        run: npm run typecheck
-        continue-on-error: true
+      # TypeScript is a required gate. tsconfig.json already enables strict mode.
+      - name: TypeScript check
+        run: npx tsc --noEmit
 
       - name: Production build
         run: npm run build
