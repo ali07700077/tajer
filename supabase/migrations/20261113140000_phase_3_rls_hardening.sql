@@ -40,7 +40,7 @@ grant delete on table public.products to authenticated;
 
 create or replace function public.validate_rfq_item()
 returns trigger language plpgsql set search_path=''
-as $
+as $$
 declare product_row public.products%rowtype;
 begin
  select * into product_row from public.products where id=new.product_id;
