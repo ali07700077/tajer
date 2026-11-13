@@ -32,7 +32,11 @@ using (is_active and private.is_approved_supplier(business_id));
 -- Explicit Data API grants: RLS controls rows; grants control whether the API can reach the table.
 revoke all on table public.products from public, anon, authenticated;
 grant select on table public.products to anon, authenticated;
-grant insert, update, delete on table public.products to authenticated;
+grant insert (id, business_id, name, description, price, min_order_quantity, image_path, is_active)
+  on table public.products to authenticated;
+grant update (name, description, price, min_order_quantity, image_path, is_active)
+  on table public.products to authenticated;
+grant delete on table public.products to authenticated;
 
 create or replace function public.validate_rfq_item()
 returns trigger language plpgsql set search_path=''
@@ -95,7 +99,9 @@ using (public.has_business_role(supplier_business_id,array['owner'::public.membe
 create policy rfq_offers_supplier_insert on public.rfq_offers for insert to authenticated
 with check (status='submitted' and total_price is not null and total_price>0 and unit_price>0 and (delivery_days is null or delivery_days>0) and private.can_submit_rfq_offer(rfq_id,supplier_business_id,quantity));
 
--- Offer submission and award must pass through the validated SECURITY DEFINER RPCs.
+-- RFQ creation and line items are tenant-scoped; offer submission/award use validated RPCs.
+revoke all on table public.rfqs, public.rfq_items from public, anon, authenticated;
+grant select, insert on table public.rfqs, public.rfq_items to authenticated;
 revoke all on table public.rfq_offers from public, anon, authenticated;
 grant select on public.rfq_offers to authenticated;
 
