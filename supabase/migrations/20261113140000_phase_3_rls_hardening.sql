@@ -1,4 +1,7 @@
 -- Phase 3 hardening: safe public supplier names and non-recursive RFQ RLS predicates.
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to anon, authenticated;
 alter table public.rfqs drop constraint if exists rfqs_status_check;
 alter table public.rfqs add constraint rfqs_status_check
 check (status = any(array['open','responded','closed','awarded','cancelled']));
@@ -27,8 +30,8 @@ create policy products_select_public_active on public.products for select to ano
 using (is_active and private.is_approved_supplier(business_id));
 
 create or replace function public.validate_rfq_item()
-returns trigger language plpgsql set search_path=public
-as $$
+returns trigger language plpgsql set search_path=''
+as $
 declare product_row public.products%rowtype;
 begin
  select * into product_row from public.products where id=new.product_id;
@@ -58,6 +61,7 @@ create or replace function private.can_submit_rfq_offer(p_rfq_id uuid,p_supplier
 returns boolean language sql stable security definer set search_path=''
 as $$
  select auth.uid() is not null and public.has_business_role(p_supplier_business_id,array['owner'::public.member_role,'manager'::public.member_role])
+ and private.is_approved_supplier(p_supplier_business_id)
  and exists(select 1 from public.rfq_items ri join public.rfqs r on r.id=ri.rfq_id where ri.rfq_id=p_rfq_id and ri.supplier_business_id=p_supplier_business_id and ri.quantity=p_quantity and r.status in ('open','responded'));
 $$;
 revoke all on function private.is_rfq_buyer(uuid) from public,anon;
@@ -74,7 +78,10 @@ create policy rfqs_buyer_supplier_read on public.rfqs for select to authenticate
 drop policy if exists rfq_items_buyer_supplier_read on public.rfq_items;
 drop policy if exists rfq_items_buyer_insert on public.rfq_items;
 create policy rfq_items_buyer_supplier_read on public.rfq_items for select to authenticated using (private.can_view_rfq_item(rfq_id,supplier_business_id));
-create policy rfq_items_buyer_insert on public.rfq_items for insert to authenticated with check (private.is_rfq_buyer(rfq_id));
+create policy rfq_items_buyer_insert on public.rfq_items for insert to authenticated with check (
+  private.is_rfq_buyer(rfq_id)
+  and exists(select 1 from public.rfqs r where r.id=rfq_id and r.status in ('open','responded'))
+);
 drop policy if exists rfq_offers_supplier_buyer_read on public.rfq_offers;
 drop policy if exists rfq_offers_supplier_insert on public.rfq_offers;
 drop policy if exists rfq_offers_buyer_update on public.rfq_offers;
@@ -83,6 +90,10 @@ using (public.has_business_role(supplier_business_id,array['owner'::public.membe
 create policy rfq_offers_supplier_insert on public.rfq_offers for insert to authenticated
 with check (status='submitted' and total_price is not null and total_price>0 and unit_price>0 and (delivery_days is null or delivery_days>0) and private.can_submit_rfq_offer(rfq_id,supplier_business_id,quantity));
 
+-- Offer submission and award must pass through the validated SECURITY DEFINER RPCs.
+revoke insert, update, delete on public.rfq_offers from anon, authenticated;
+grant select on public.rfq_offers to authenticated;
+
 alter table public.rfq_offers drop constraint if exists rfq_offers_one_per_supplier;
-revoke all on function private.submit_rfq_offer(uuid,uuid,numeric,integer,text) from public,anon,authenticated;
-revoke all on function private.accept_rfq_offer(uuid) from public,anon,authenticated;
+revoke all on function public.submit_rfq_offer(uuid,uuid,numeric,integer,text) from public,anon,authenticated;
+revoke all on function public.accept_rfq_offer(uuid) from public,anon,authenticated;
