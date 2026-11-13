@@ -48,3 +48,5 @@
 .company-product-main strong{font-size:12px}
 .danger-outline{color:#a44444}
 @media(max-width:620px){.company-selector{align-items:stretch;flex-direction:column}.company-status{justify-content:space-between}.company-metrics{grid-template-columns:1fr 1fr}.form-pair{grid-template-columns:1fr}.company-product-row{flex-wrap:wrap}.company-product-main{min-width:55%}}
+
+.product-thumb img{width:100%;height:100%;object-fit:cover;border-radius:9px}
