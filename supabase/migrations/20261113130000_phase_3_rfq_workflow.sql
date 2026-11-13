@@ -16,7 +16,6 @@ create index if not exists rfq_items_supplier_idx on public.rfq_items(supplier_b
 create index if not exists rfq_items_product_idx on public.rfq_items(product_id);
 create index if not exists rfqs_buyer_created_idx on public.rfqs(buyer_business_id, created_at desc);
 create index if not exists rfq_offers_rfq_idx on public.rfq_offers(rfq_id, created_at desc);
-alter table public.rfq_offers add constraint rfq_offers_one_per_supplier unique (rfq_id, supplier_business_id);
 
 create or replace function public.validate_rfq_item()
 returns trigger language plpgsql set search_path = public
