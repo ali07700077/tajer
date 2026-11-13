@@ -11,6 +11,7 @@ type WholesaleProduct = {
   price: number;
   min_order_quantity: number;
   stock_quantity: number;
+  available_quantity: number;
   sample_available: boolean;
   sample_price: number | null;
   sample_max_quantity: number;
@@ -47,7 +48,7 @@ export default function WholesaleCheckout() {
           db.auth.getSession(),
           getMyBusinesses(),
           db.from("products")
-            .select("id,business_id,name,description,price,min_order_quantity,stock_quantity,sample_available,sample_price,sample_max_quantity,tiers:product_price_tiers(id,min_quantity,unit_price)")
+            .select("id,business_id,name,description,price,min_order_quantity,stock_quantity,available_quantity,sample_available,sample_price,sample_max_quantity,tiers:product_price_tiers(id,min_quantity,unit_price)")
             .eq("is_active", true)
             .order("created_at", { ascending: false }),
         ]);
@@ -76,19 +77,19 @@ export default function WholesaleCheckout() {
   function add(product: WholesaleProduct) {
     setCart(current => {
       const existing = current.find(line => line.product.id === product.id);
-      const nextQuantity = Math.min(product.stock_quantity, (existing?.quantity ?? 0) + product.min_order_quantity);
+      const nextQuantity = Math.min(product.available_quantity, (existing?.quantity ?? 0) + product.min_order_quantity);
       return existing
         ? current.map(line => line.product.id === product.id ? { ...line, quantity: nextQuantity } : line)
         : [...current, { product, quantity: Math.min(product.min_order_quantity, product.stock_quantity) }];
     });
-    setMessage("أُضيف المنتج إلى سلة الجملة. السعر النهائي سيُعاد احتسابه داخل قاعدة البيانات.");
+    setMessage("أُضيف المنتج إلى سلة الجملة. السعر النهائي سيُعاد احتسابه داخل قاعدة البيانات، والكميات تُحجز مؤقتاً عند إنشاء الطلب.");
   }
 
   function setQuantity(productId: string, raw: string) {
     const quantity = Number(raw);
     setCart(current => current.map(line => line.product.id !== productId ? line : {
       ...line,
-      quantity: Number.isSafeInteger(quantity) ? Math.max(1, Math.min(quantity, line.product.stock_quantity)) : line.quantity,
+      quantity: Number.isSafeInteger(quantity) ? Math.max(1, Math.min(quantity, line.product.available_quantity)) : line.quantity,
     }));
   }
 
@@ -100,7 +101,7 @@ export default function WholesaleCheckout() {
       const orders = await createWholesaleOrders(buyerId, items, address);
       setCreatedOrders(orders);
       setCart([]);
-      setMessage(`تم إنشاء ${orders.length} طلب جملة مستقل، طلب لكل مورد. تم تثبيت الأسعار وخصم المخزون ذرياً.`);
+      setMessage(`تم إنشاء ${orders.length} طلب جملة مستقل، طلب لكل مورد. تم تثبيت الأسعار وحجز الكميات لمدة 15 دقيقة؛ يُخصم المخزون عند تأكيد الدفع.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "تعذر إتمام طلب الجملة.");
     } finally { setBusy(false); }
