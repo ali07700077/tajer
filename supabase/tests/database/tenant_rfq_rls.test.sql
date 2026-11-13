@@ -3,7 +3,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(13);
 
 insert into auth.users
   (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
@@ -34,6 +34,11 @@ select ok(
 select ok(
   has_function_privilege('anon','private.is_approved_supplier(uuid)','EXECUTE'),
   'anonymous catalog reads can evaluate approved supplier visibility'
+);
+select is(
+  (select count(*)::bigint from public.governorates where is_active),
+  19::bigint,
+  'all 19 Iraqi governorates are available as active reference data'
 );
 select is(
   (select count(*)::bigint from public.products where id in (
