@@ -22,23 +22,11 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Prepare Supabase environment
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          : "${VITE_SUPABASE_URL:?Missing GitHub secret VITE_SUPABASE_URL}"
-          : "${VITE_SUPABASE_PUBLISHABLE_KEY:?Add VITE_SUPABASE_PUBLISHABLE_KEY (or legacy VITE_SUPABASE_ANON_KEY) as a GitHub secret}"
-          printf '%s\n' "VITE_SUPABASE_URL=$VITE_SUPABASE_URL" "VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY" > .env.production
-
+      # Supabase configuration is optional at build time.
+      # The browser client stays disabled until a real public URL/key is configured.
       - name: TypeScript check (temporary non-blocking)
         run: npm run typecheck
         continue-on-error: true
 
       - name: Production build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
