@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getMyBusinesses, type BusinessSummary } from "../lib/businesses";
-import { getProductPriceTiers, type ProductPriceTier } from "../lib/company-products";
+import type { ProductPriceTier } from "../lib/company-products";
 import { supabase } from "../lib/supabase";
 
 type Product = {
