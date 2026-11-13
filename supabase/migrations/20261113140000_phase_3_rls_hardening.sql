@@ -91,7 +91,7 @@ create policy rfq_offers_supplier_insert on public.rfq_offers for insert to auth
 with check (status='submitted' and total_price is not null and total_price>0 and unit_price>0 and (delivery_days is null or delivery_days>0) and private.can_submit_rfq_offer(rfq_id,supplier_business_id,quantity));
 
 -- Offer submission and award must pass through the validated SECURITY DEFINER RPCs.
-revoke insert, update, delete on public.rfq_offers from anon, authenticated;
+revoke all on table public.rfq_offers from public, anon, authenticated;
 grant select on public.rfq_offers to authenticated;
 
 alter table public.rfq_offers drop constraint if exists rfq_offers_one_per_supplier;
