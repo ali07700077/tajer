@@ -1,0 +1,22 @@
+name: TAJER CI
+on:
+  push:
+    branches:
+      - implementation/bootstrap
+  pull_request:
+    branches:
+      - main
+      - implementation/bootstrap
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck and production build
+        run: npm run build
