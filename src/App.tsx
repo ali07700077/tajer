@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getPublicCatalog, type CatalogProduct } from "./lib/catalog";
+import { signInWithEmail } from "./lib/auth";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
 
 type Section = "overview" | "products" | "rfqs" | "orders" | "suppliers";
-type Product = { id: number; name: string; category: string; price: number; min: number; stock: string; color: string; initials: string; };
+type Product = { id: string; name: string; category: string; price: number; min: number; stock: string; color: string; initials: string; };
 const nav: { id: Section; label: string; icon: string }[] = [
   { id: "overview", label: "الرئيسية", icon: "⌂" },
   { id: "products", label: "كتالوج الجملة", icon: "▦" },
@@ -10,19 +12,13 @@ const nav: { id: Section; label: string; icon: string }[] = [
   { id: "orders", label: "الطلبات", icon: "▣" },
   { id: "suppliers", label: "الموردون", icon: "♧" },
 ];
-const products: Product[] = [
-  { id: 1, name: "سماعات لاسلكية TWS", category: "إلكترونيات", price: 8500, min: 20, stock: "متوفر", color: "lavender", initials: "TWS" },
-  { id: 2, name: "شاحن سريع USB-C 25W", category: "إكسسوارات الهاتف", price: 4250, min: 50, stock: "متوفر", color: "mint", initials: "25W" },
-  { id: 3, name: "حافظة هاتف سيليكون", category: "إكسسوارات الهاتف", price: 1200, min: 100, stock: "محدود", color: "sand", initials: "CASE" },
-  { id: 4, name: "ساعة ذكية رياضية", category: "أجهزة ذكية", price: 17000, min: 10, stock: "متوفر", color: "blue", initials: "WATCH" },
-  { id: 5, name: "كابل شحن سريع متر", category: "إكسسوارات الهاتف", price: 1750, min: 100, stock: "متوفر", color: "mint", initials: "USB-C" },
-  { id: 6, name: "مصباح LED قابل للشحن", category: "منزل وإنارة", price: 6500, min: 24, stock: "متوفر", color: "sand", initials: "LED" },
-];
 const money = (v: number) => new Intl.NumberFormat("en-US").format(v) + " د.ع";
 type CartLine = { product: Product; quantity: number };
 
 export default function App() {
   const [section, setSection] = useState<Section>("overview");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("الكل");
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -34,6 +30,21 @@ export default function App() {
   const [rfqNote, setRfqNote] = useState("");
   const [rfqSent, setRfqSent] = useState(false);
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!supabase) { setCatalogLoading(false); return; }
+    getPublicCatalog()
+      .then(rows => { if (active) setProducts(rows.map((p: CatalogProduct) => ({
+        id: p.id, name: p.name, category: p.category?.name_ar ?? "غير مصنف",
+        price: Number(p.price), min: p.min_order_quantity,
+        stock: p.stock_quantity > 0 ? "متوفر" : "غير متوفر",
+        color: "mint", initials: p.name.slice(0, 5),
+      }))); })
+      .catch(error => { if (active) setNotice(error instanceof Error ? `تعذر تحميل الكتالوج: ${error.message}` : "تعذر تحميل الكتالوج."); })
+      .finally(() => { if (active) setCatalogLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const filtered = useMemo(() => products.filter(p =>
     (p.name + p.category).toLowerCase().includes(search.trim().toLowerCase()) &&
@@ -51,15 +62,18 @@ export default function App() {
     });
     setNotice("أُضيف المنتج إلى طلب عرض السعر بالحد الأدنى للطلب.");
   }
-  function changeQuantity(id: number, quantity: number) {
+  function changeQuantity(id: string, quantity: number) {
     setCart(current => current.map(line => line.product.id === id ? { ...line, quantity: Math.max(line.product.min, quantity || line.product.min) } : line));
   }
   async function signIn() {
     if (!supabase) { setNotice("إعداد الاتصال بقاعدة Supabase غير مكتمل بعد."); return; }
     setAuthBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setAuthBusy(false);
-    setNotice(error ? error.message : "تم تسجيل الدخول بنجاح.");
+    try {
+      await signInWithEmail(email, password);
+      setNotice("تم تسجيل الدخول بنجاح.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "تعذر تسجيل الدخول.");
+    } finally { setAuthBusy(false); }
   }
   async function submitRfq() {
     if (!cart.length) return;
@@ -89,6 +103,8 @@ export default function App() {
         {notice && <div className="notice"><span>ⓘ</span><p>{notice}</p><button onClick={() => setNotice("")}>×</button></div>}
         {showAuth && <section className="auth-panel"><div><b>الدخول إلى حسابك</b><p>تسجيل الدخول الآمن عبر Supabase.</p></div><input type="email" placeholder="البريد الإلكتروني" value={email} onChange={e => setEmail(e.target.value)} /><input type="password" placeholder="كلمة المرور" value={password} onChange={e => setPassword(e.target.value)} /><button className="primary" disabled={authBusy} onClick={signIn}>{authBusy ? "جارٍ الدخول..." : "دخول"}</button></section>}
         {section === "overview" && <>
+          {catalogLoading && <div className="notice">جارٍ تحميل المنتجات الحقيقية من قاعدة البيانات...</div>}
+          {!catalogLoading && products.length === 0 && <div className="notice">لا توجد منتجات منشورة من موردين معتمدين حالياً. أضف أول مورد ومنتجاته لعرضها هنا.</div>}
           <div className="stat-grid">
             <Stat label="منتجات في الكتالوج التجريبي" value="06" delta="نماذج أولية للعرض" icon="▦" />
             <Stat label="منتجات في طلبك" value={String(cart.length)} delta={`${cartCount} قطعة إجمالاً`} icon="▤" />
@@ -100,6 +116,8 @@ export default function App() {
           <div className="lower-grid"><div className="panel"><div className="panel-head"><h3>كيف يعمل تاجر؟</h3><span className="muted">3 خطوات</span></div><Activity title="1. اكتشف المنتجات" sub="ابحث في كتالوج الموردين وقارن الخيارات." time="01" /><Activity title="2. أرسل طلب عرض سعر" sub="حدد الكميات وأضف ملاحظاتك للمورد." time="02" /><Activity title="3. تفاوض وأكمل الطلب" sub="راجع عروض الموردين واتفق على التفاصيل." time="03" /></div><div className="panel callout"><div className="callout-icon">✦</div><h3>هل أنت مورّد؟</h3><p>جهّز ملف شركتك وأضف منتجاتك للوصول إلى تجار الجملة في العراق.</p><button className="outline" onClick={() => setSection("suppliers")}>ملف الموردين</button></div></div>
         </>}
         {section === "products" && <>
+          {catalogLoading && <div className="notice">جارٍ تحميل الكتالوج من قاعدة البيانات...</div>}
+          {!catalogLoading && products.length === 0 && <div className="notice">الكتالوج فارغ حالياً؛ المنتجات التجريبية أزيلت حتى لا تظهر كأنها منتجات حقيقية.</div>}
           <div className="toolbar"><input className="search" placeholder="ابحث عن منتج أو تصنيف..." value={search} onChange={e => setSearch(e.target.value)} /><select aria-label="التصنيف" value={category} onChange={e => setCategory(e.target.value)}><option>الكل</option><option>إلكترونيات</option><option>إكسسوارات الهاتف</option><option>أجهزة ذكية</option><option>منزل وإنارة</option></select><button className="outline" onClick={() => { setSearch(""); setCategory("الكل"); }}>مسح الفلاتر</button></div>
           <ProductGrid items={filtered} onAdd={addToCart} />
         </>}
