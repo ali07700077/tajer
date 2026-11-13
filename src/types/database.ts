@@ -864,6 +864,13 @@ export type Database = {
         }
         Returns: string
       }
+      get_public_supplier_names: {
+        Args: { p_business_ids?: string[] }
+        Returns: {
+          id: string
+          name_ar: string
+        }[]
+      }
       has_business_role: {
         Args: {
           p_business_id: string
