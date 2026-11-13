@@ -22,6 +22,9 @@ export default function CompanyDashboard() {
   const [moq, setMoq] = useState("1");
   const [retailPrice, setRetailPrice] = useState("");
   const [retailEnabled, setRetailEnabled] = useState(false);
+  const [sampleEnabled, setSampleEnabled] = useState(false);
+  const [samplePrice, setSamplePrice] = useState("");
+  const [sampleMaxQuantity, setSampleMaxQuantity] = useState("1");
   const [image, setImage] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [tierProduct, setTierProduct] = useState<CompanyProduct | null>(null);
@@ -66,26 +69,26 @@ export default function CompanyDashboard() {
   useEffect(() => { if (selectedId) void loadProducts(selectedId); else setProducts([]); }, [selectedId]);
 
   function resetForm() {
-    setName(""); setDescription(""); setPrice(""); setMoq("1"); setRetailPrice(""); setRetailEnabled(false); setImage(null); setEditing(null); setShowForm(false);
+    setName(""); setDescription(""); setPrice(""); setMoq("1"); setRetailPrice(""); setRetailEnabled(false); setSampleEnabled(false); setSamplePrice(""); setSampleMaxQuantity("1"); setImage(null); setEditing(null); setShowForm(false);
   }
 
   function startEdit(product: CompanyProduct) {
     setEditing(product); setName(product.name); setDescription(product.description ?? "");
     setPrice(String(product.price)); setMoq(String(product.min_order_quantity));
-    setRetailPrice(product.retail_price == null ? "" : String(product.retail_price)); setRetailEnabled(product.is_retail_available);
+    setRetailPrice(product.retail_price == null ? "" : String(product.retail_price)); setRetailEnabled(product.is_retail_available); setSampleEnabled(product.sample_available); setSamplePrice(product.sample_price == null ? "" : String(product.sample_price)); setSampleMaxQuantity(String(product.sample_max_quantity));
     setImage(null); setShowForm(true);
   }
 
   async function submitProduct() {
     if (!selected) return;
-    const numericPrice = Number(price), numericMoq = Number(moq), numericRetailPrice = Number(retailPrice);
-    if (!name.trim() || !Number.isFinite(numericPrice) || numericPrice <= 0 || !Number.isInteger(numericMoq) || numericMoq < 1 || (retailEnabled && (!Number.isFinite(numericRetailPrice) || numericRetailPrice <= 0))) {
+    const numericPrice = Number(price), numericMoq = Number(moq), numericRetailPrice = Number(retailPrice), numericSamplePrice = Number(samplePrice), numericSampleMax = Number(sampleMaxQuantity);
+    if (!name.trim() || !Number.isFinite(numericPrice) || numericPrice <= 0 || !Number.isInteger(numericMoq) || numericMoq < 1 || (retailEnabled && (!Number.isFinite(numericRetailPrice) || numericRetailPrice <= 0)) || (sampleEnabled && (!Number.isFinite(numericSamplePrice) || numericSamplePrice <= 0 || !Number.isInteger(numericSampleMax) || numericSampleMax < 1 || numericSampleMax > 10))) {
       setMessage("أدخل اسم المنتج وسعراً صحيحاً وكمية دنيا صحيحة (1 أو أكثر)."); return;
     }
     setBusy(true); setMessage("");
     try {
       if (editing) {
-        await updateCompanyProduct(editing.id, { name, description, price: numericPrice, retailPrice: retailEnabled ? numericRetailPrice : null, isRetailAvailable: retailEnabled, minOrderQuantity: numericMoq });
+        await updateCompanyProduct(editing.id, { name, description, price: numericPrice, retailPrice: retailEnabled ? numericRetailPrice : null, isRetailAvailable: retailEnabled, sampleAvailable: sampleEnabled, samplePrice: sampleEnabled ? numericSamplePrice : null, sampleMaxQuantity: numericSampleMax, minOrderQuantity: numericMoq });
         setMessage("تم تحديث المنتج.");
       } else {
         await createCompanyProduct({ business: selected, name, description, price: numericPrice, retailPrice: retailEnabled ? numericRetailPrice : null, isRetailAvailable: retailEnabled, minOrderQuantity: numericMoq, image });
@@ -157,6 +160,8 @@ export default function CompanyDashboard() {
         <div className="form-pair"><label>سعر الجملة للقطعة (د.ع)<input type="number" min="1" step="1" value={price} onChange={e => setPrice(e.target.value)} /></label><label>الحد الأدنى للجملة (MOQ)<input type="number" min="1" step="1" value={moq} onChange={e => setMoq(e.target.value)} /></label></div>
         <label className="retail-toggle"><input type="checkbox" checked={retailEnabled} onChange={e => setRetailEnabled(e.target.checked)} /> إتاحة البيع بالمفرد لهذا المنتج</label>
         {retailEnabled && <label>سعر المفرد (د.ع)<input type="number" min="1" step="1" value={retailPrice} onChange={e => setRetailPrice(e.target.value)} placeholder="سعر القطعة للمستهلك" /></label>}
+        <label className="retail-toggle"><input type="checkbox" checked={sampleEnabled} onChange={e => setSampleEnabled(e.target.checked)} /> إتاحة طلب عينة مدفوعة لتجار الجملة</label>
+        {sampleEnabled && <div className="form-pair"><label>سعر العينة (د.ع)<input type="number" min="1" step="1" value={samplePrice} onChange={e => setSamplePrice(e.target.value)} /></label><label>أقصى كمية للعينة<input type="number" min="1" max="10" step="1" value={sampleMaxQuantity} onChange={e => setSampleMaxQuantity(e.target.value)} /></label></div>}
         {!editing && <label>صورة المنتج (اختيارية، JPG/PNG/WEBP حتى 5MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setImage(e.target.files?.[0] ?? null)} /></label>}
         <button className="primary" disabled={busy} onClick={submitProduct}>{busy ? "جارٍ الحفظ..." : editing ? "حفظ التعديلات" : "إضافة المنتج"}</button>
       </div>}
