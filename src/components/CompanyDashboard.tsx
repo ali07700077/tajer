@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCurrentSession, onSessionChange } from "../lib/auth";
 import { getMyBusinesses, type BusinessSummary } from "../lib/businesses";
-import { createCompanyProduct, deleteCompanyProduct, getCompanyProductImageUrl, getCompanyProducts, updateCompanyProduct, type CompanyProduct } from "../lib/company-products";
+import { addProductPriceTier, createCompanyProduct, deleteCompanyProduct, deleteProductPriceTier, getCompanyProductImageUrl, getCompanyProducts, getProductPriceTiers, updateCompanyProduct, type CompanyProduct, type ProductPriceTier } from "../lib/company-products";
 import { supabase } from "../lib/supabase";
 
 const money = (value: number) => new Intl.NumberFormat("en-US").format(value) + " د.ع";
@@ -24,6 +24,11 @@ export default function CompanyDashboard() {
   const [retailEnabled, setRetailEnabled] = useState(false);
   const [image, setImage] = useState<File | null>(null);
   const [message, setMessage] = useState("");
+  const [tierProduct, setTierProduct] = useState<CompanyProduct | null>(null);
+  const [tiers, setTiers] = useState<ProductPriceTier[]>([]);
+  const [tierMinQuantity, setTierMinQuantity] = useState("");
+  const [tierUnitPrice, setTierUnitPrice] = useState("");
+  const [tierBusy, setTierBusy] = useState(false);
 
   const selected = businesses.find(b => b.id === selectedId) ?? null;
 
@@ -92,6 +97,38 @@ export default function CompanyDashboard() {
     finally { setBusy(false); }
   }
 
+
+  async function openTierEditor(product: CompanyProduct) {
+    setTierProduct(product); setTierMinQuantity(""); setTierUnitPrice("");
+    try { setTiers(await getProductPriceTiers(product.id)); }
+    catch (e) { setMessage(e instanceof Error ? e.message : "تعذر تحميل شرائح الأسعار."); setTiers([]); }
+  }
+
+  async function saveTier() {
+    if (!tierProduct) return;
+    const min = Number(tierMinQuantity), unit = Number(tierUnitPrice);
+    if (!Number.isInteger(min) || min < tierProduct.min_order_quantity || !Number.isFinite(unit) || unit <= 0 || unit > Number(tierProduct.price)) {
+      setMessage(`الكمية يجب أن تبدأ من MOQ (${tierProduct.min_order_quantity})، وسعر الشريحة يجب أن يكون أكبر من صفر ولا يتجاوز سعر الجملة الأساسي.`);
+      return;
+    }
+    setTierBusy(true); setMessage("");
+    try {
+      await addProductPriceTier(tierProduct.id, min, unit);
+      setTiers(await getProductPriceTiers(tierProduct.id));
+      setTierMinQuantity(""); setTierUnitPrice("");
+      setMessage("تم حفظ شريحة سعر الجملة.");
+    } catch (e) { setMessage(e instanceof Error ? e.message : "تعذر حفظ الشريحة."); }
+    finally { setTierBusy(false); }
+  }
+
+  async function removeTier(tier: ProductPriceTier) {
+    if (!tierProduct) return;
+    setTierBusy(true);
+    try { await deleteProductPriceTier(tier.id); setTiers(await getProductPriceTiers(tierProduct.id)); setMessage("تم حذف شريحة السعر."); }
+    catch (e) { setMessage(e instanceof Error ? e.message : "تعذر حذف الشريحة."); }
+    finally { setTierBusy(false); }
+  }
+
   async function removeProduct(product: CompanyProduct) {
     if (!window.confirm("هل تريد حذف هذا المنتج نهائياً؟")) return;
     setBusy(true);
@@ -124,8 +161,18 @@ export default function CompanyDashboard() {
         <button className="primary" disabled={busy} onClick={submitProduct}>{busy ? "جارٍ الحفظ..." : editing ? "حفظ التعديلات" : "إضافة المنتج"}</button>
       </div>}
       <div className="company-products-head"><h4>منتجات الشركة</h4><button className="outline" onClick={() => selected && loadProducts(selected.id)}>تحديث القائمة</button></div>
-      {loading ? <p>جارٍ تحميل المنتجات...</p> : products.length === 0 ? <div className="empty">لا توجد منتجات لهذه الشركة بعد. أضف أول منتج إلى كتالوج الجملة.</div> : <div className="company-product-list">{products.map(p => <article className="company-product-row" key={p.id}><div className="product-thumb">{imageUrls[p.id] ? <img src={imageUrls[p.id]} alt={p.name} /> : "▦"}</div><div className="company-product-main"><b>{p.name}</b><small>{p.description || "لا يوجد وصف"} · MOQ: {p.min_order_quantity}</small><strong>جملة: {money(Number(p.price))}</strong>{p.is_retail_available && p.retail_price != null && <small>مفرد: {money(Number(p.retail_price))}</small>}</div><span className="draft-pill">{p.is_active ? "مفعّل" : "مسودة"}</span><button className="outline" disabled={busy} onClick={() => startEdit(p)}>تعديل</button><button className="outline danger-outline" disabled={busy} onClick={() => removeProduct(p)}>حذف</button></article>)}</div>}
+      {loading ? <p>جارٍ تحميل المنتجات...</p> : products.length === 0 ? <div className="empty">لا توجد منتجات لهذه الشركة بعد. أضف أول منتج إلى كتالوج الجملة.</div> : <div className="company-product-list">{products.map(p => <article className="company-product-row" key={p.id}><div className="product-thumb">{imageUrls[p.id] ? <img src={imageUrls[p.id]} alt={p.name} /> : "▦"}</div><div className="company-product-main"><b>{p.name}</b><small>{p.description || "لا يوجد وصف"} · MOQ: {p.min_order_quantity}</small><strong>جملة: {money(Number(p.price))}</strong>{p.is_retail_available && p.retail_price != null && <small>مفرد: {money(Number(p.retail_price))}</small>}</div><span className="draft-pill">{p.is_active ? "مفعّل" : "مسودة"}</span><button className="outline" disabled={busy} onClick={() => startEdit(p)}>تعديل</button><button className="outline" disabled={busy} onClick={() => void openTierEditor(p)}>شرائح الجملة</button><button className="outline danger-outline" disabled={busy} onClick={() => removeProduct(p)}>حذف</button></article>)}</div>}
     </>}
+    {tierProduct && <div className="product-form tier-editor">
+      <div className="panel-head"><b>شرائح أسعار الجملة — {tierProduct.name}</b><button className="outline" onClick={() => setTierProduct(null)}>إغلاق</button></div>
+      <p className="muted">سعر الأساس: {money(Number(tierProduct.price))} · الحد الأدنى: {tierProduct.min_order_quantity} قطعة. كل شريحة تطبق عند بلوغ كميتها أو تجاوزها.</p>
+      <div className="form-pair">
+        <label>تبدأ من كمية<input type="number" min={tierProduct.min_order_quantity} step="1" value={tierMinQuantity} onChange={e => setTierMinQuantity(e.target.value)} /></label>
+        <label>سعر القطعة للشريحة (د.ع)<input type="number" min="1" max={tierProduct.price} step="1" value={tierUnitPrice} onChange={e => setTierUnitPrice(e.target.value)} /></label>
+      </div>
+      <button className="primary" disabled={tierBusy} onClick={saveTier}>{tierBusy ? "جارٍ الحفظ..." : "إضافة شريحة"}</button>
+      {tiers.length ? <div className="company-product-list">{tiers.map(t => <article className="company-product-row" key={t.id}><b>من {t.min_quantity} قطعة</b><strong>{money(Number(t.unit_price))} / قطعة</strong><button className="outline danger-outline" disabled={tierBusy} onClick={() => void removeTier(t)}>حذف</button></article>)}</div> : <p className="empty">لا توجد شرائح بعد. سيستخدم النظام سعر الجملة الأساسي.</p>}
+    </div>}
     {message && <p className="notice account-message">{message}</p>}
   </section>;
 }

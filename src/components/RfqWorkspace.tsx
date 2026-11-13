@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { getMyBusinesses, type BusinessSummary } from "../lib/businesses";
+import { getProductPriceTiers, type ProductPriceTier } from "../lib/company-products";
 import { supabase } from "../lib/supabase";
 
 type Product = {
   id: string; name: string; description: string | null; price: number;
   min_order_quantity: number; stock_quantity: number; category?: { name_ar: string } | null;
-  supplier_name?: string;
+  supplier_name?: string; price_tiers?: ProductPriceTier[];
 };
 type RfqItem = { id: string; product_id: string; quantity: number; supplier_business_id: string; products?: { name: string; price: number } | null };
 type Offer = { id: string; supplier_business_id: string; total_price: number; delivery_days: number | null; notes: string | null; status: string; quantity: number };
@@ -169,7 +170,8 @@ export default function RfqWorkspace({ mode }: { mode: "catalog" | "dashboard" }
       <div className="product-grid">{filtered.map(p=><article className="product-card rfq-product" key={p.id}>
         <div className="product-art mint"><span>▦</span><small>{p.category?.name_ar??"منتج جملة"}</small></div>
         <div className="product-info"><small>{p.supplier_name}</small><h3>{p.name}</h3><p className="rfq-description">{p.description||"منتج متاح للطلب بالجملة."}</p>
-          <div className="product-price">{money(p.price)} <span>/ سعر إرشادي للوحدة</span></div>
+          <div className="product-price">{money(p.price)} <span>/ سعر الجملة الأساسي للوحدة</span></div>
+          {(p.price_tiers??[]).length>0&&<div className="rfq-price-tiers"><small>شرائح الجملة:</small>{(p.price_tiers??[]).map(t=><span key={t.id}>من {t.min_quantity} قطعة: {money(Number(t.unit_price))} / قطعة</span>)}</div>}
           <div className="product-foot"><span>الحد الأدنى: {p.min_order_quantity}</span><b className={p.stock_quantity>0?"in-stock":"low-stock"}>{p.stock_quantity>0?"متوفر":"حسب الطلب"}</b></div>
           <button className="primary rfq-full" onClick={()=>{setSelectedProduct(p);setQuantity(String(p.min_order_quantity));setMessage("");}}>طلب عرض سعر</button>
         </div>
@@ -180,6 +182,7 @@ export default function RfqWorkspace({ mode }: { mode: "catalog" | "dashboard" }
       <b>{selectedProduct.name}</b><small className="muted">المورد: {selectedProduct.supplier_name} · MOQ: {selectedProduct.min_order_quantity}</small>
       <label>شركة المشتري<select value={selectedBuyer} onChange={e=>setSelectedBuyer(e.target.value)}>{buyerBusinesses.map(b=><option key={b.id} value={b.id}>{b.name_ar}</option>)}</select></label>
       <label>الكمية المطلوبة<input type="number" min={selectedProduct.min_order_quantity} step="1" value={quantity} onChange={e=>setQuantity(e.target.value)}/></label>
+      {(()=>{const qty=Number(quantity);const tier=[...(selectedProduct.price_tiers??[])].filter(t=>Number.isInteger(qty)&&qty>=t.min_quantity).sort((a,b)=>b.min_quantity-a.min_quantity)[0];const unit=tier?Number(tier.unit_price):Number(selectedProduct.price);return <div className="notice">السعر الإرشادي حسب الكمية: {money(unit)} للقطعة · الإجمالي التقريبي: {money(unit*(Number.isInteger(qty)&&qty>0?qty:0))}{tier?" (شريحة كمية مطبقة)":" (السعر الأساسي)"}</div>;})()}
       <label>ملاحظات الطلب<textarea rows={3} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="المواصفات، المدينة، موعد التسليم المطلوب..."/></label>
       {!signedIn&&<p className="muted">يلزم تسجيل الدخول قبل الإرسال.</p>}
       <button className="primary" disabled={busy||!signedIn||!buyerBusinesses.length} onClick={createRfq}>{busy?"جارٍ الإرسال...":"إرسال طلب عرض السعر"}</button>

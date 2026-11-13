@@ -109,3 +109,30 @@ export async function getCompanyProductImageUrl(path: string): Promise<string | 
   if (error) return null;
   return data.signedUrl;
 }
+
+
+export type ProductPriceTier = { id: string; product_id: string; min_quantity: number; unit_price: number };
+
+export async function getProductPriceTiers(productId: string): Promise<ProductPriceTier[]> {
+  const { data, error } = await client().from("product_price_tiers")
+    .select("id,product_id,min_quantity,unit_price")
+    .eq("product_id", productId)
+    .order("min_quantity", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as ProductPriceTier[];
+}
+
+export async function addProductPriceTier(productId: string, minQuantity: number, unitPrice: number): Promise<void> {
+  if (!Number.isInteger(minQuantity) || minQuantity < 1 || !Number.isFinite(unitPrice) || unitPrice <= 0) {
+    throw new Error("أدخل كمية صحيحة وسعراً أكبر من الصفر.");
+  }
+  const { error } = await client().from("product_price_tiers").insert({
+    product_id: productId, min_quantity: minQuantity, unit_price: unitPrice,
+  });
+  if (error) throw error;
+}
+
+export async function deleteProductPriceTier(tierId: string): Promise<void> {
+  const { error } = await client().from("product_price_tiers").delete().eq("id", tierId);
+  if (error) throw error;
+}
