@@ -192,10 +192,10 @@ values ('20000000-0000-4000-8000-000000000003',10,9000),('20000000-0000-4000-800
 on conflict (product_id,min_quantity) do update set unit_price=excluded.unit_price;
 
 select is((select count(*)::bigint from public.product_price_tiers where product_id='20000000-0000-4000-8000-000000000003'),2::bigint,'a supplier can maintain multiple increasing-quantity wholesale price tiers');
-select throws_ok($insert into public.product_price_tiers(product_id,min_quantity,unit_price) values('20000000-0000-4000-8000-000000000003',5,7000)$,'P0001','كمية شريحة السعر أقل من الحد الأدنى للطلب','a wholesale tier cannot start below the product MOQ');
-select throws_ok($insert into public.product_price_tiers(product_id,min_quantity,unit_price) values('20000000-0000-4000-8000-000000000003',30,8500)$,'P0001','يجب ألا يرتفع سعر الوحدة مع زيادة كمية الجملة','unit price cannot increase when the wholesale quantity threshold increases');
-select throws_ok($update public.products set min_order_quantity=25 where id='20000000-0000-4000-8000-000000000003'$,'P0001','تغيير الحد الأدنى سيجعل شرائح الأسعار الحالية غير صالحة','raising MOQ cannot invalidate existing wholesale tiers');
-select throws_ok($update public.products set price=7500 where id='20000000-0000-4000-8000-000000000003'$,'P0001','تغيير سعر الجملة الأساسي سيجعل شرائح الأسعار الحالية غير صالحة','lowering the base wholesale price cannot invalidate existing tiers');
+select throws_ok($$insert into public.product_price_tiers(product_id,min_quantity,unit_price) values('20000000-0000-4000-8000-000000000003',5,7000)$$,'P0001','كمية شريحة السعر أقل من الحد الأدنى للطلب','a wholesale tier cannot start below the product MOQ');
+select throws_ok($$insert into public.product_price_tiers(product_id,min_quantity,unit_price) values('20000000-0000-4000-8000-000000000003',30,8500)$$,'P0001','يجب ألا يرتفع سعر الوحدة مع زيادة كمية الجملة','unit price cannot increase when the wholesale quantity threshold increases');
+select throws_ok($$update public.products set min_order_quantity=25 where id='20000000-0000-4000-8000-000000000003'$$,'P0001','تغيير الحد الأدنى سيجعل شرائح الأسعار الحالية غير صالحة','raising MOQ cannot invalidate existing wholesale tiers');
+select throws_ok($$update public.products set price=7500 where id='20000000-0000-4000-8000-000000000003'$$,'P0001','تغيير سعر الجملة الأساسي سيجعل شرائح الأسعار الحالية غير صالحة','lowering the base wholesale price cannot invalidate existing tiers');
 select ok((select relrowsecurity from pg_class where oid='public.product_price_tiers'::regclass) and has_table_privilege('authenticated','public.product_price_tiers','SELECT') and has_table_privilege('authenticated','public.product_price_tiers','INSERT'),'wholesale tiers remain protected by RLS while authenticated clients use supplier policies');
 
 select * from finish();
