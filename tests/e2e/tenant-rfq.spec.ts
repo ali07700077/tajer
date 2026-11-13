@@ -106,6 +106,66 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
     expect(offers?.find(o => o.id === offerA)?.status).toBe("accepted");
     expect(offers?.find(o => o.id === offerB)?.status).toBe("rejected");
 
+    // Exercise the hybrid B2B checkout, sample request, and supplier-issued proforma.
+    const wholesaleProductId = randomUUID();
+    const { error: productError } = await admin.from("products").insert({
+      id: wholesaleProductId,
+      business_id: supplierOne,
+      name: "E2E wholesale checkout fixture",
+      price: 10000,
+      min_order_quantity: 5,
+      stock_quantity: 30,
+      is_active: true,
+      sample_available: true,
+      sample_price: 2000,
+      sample_max_quantity: 2,
+    });
+    if (productError) throw productError;
+    const { error: tierError } = await admin.from("product_price_tiers").insert({
+      product_id: wholesaleProductId, min_quantity: 10, unit_price: 9000,
+    });
+    if (tierError) throw tierError;
+
+    const { data: belowMoq, error: belowMoqError } = await buyer.client.rpc("create_wholesale_orders", {
+      p_buyer_business_id: buyerBusiness,
+      p_items: [{ product_id: wholesaleProductId, quantity: 4 }],
+      p_delivery_address: "بغداد، الكرادة، شارع ١",
+    });
+    expect(belowMoq).toBeNull();
+    expect(belowMoqError).not.toBeNull();
+
+    const { data: wholesaleOrders, error: wholesaleError } = await buyer.client.rpc("create_wholesale_orders", {
+      p_buyer_business_id: buyerBusiness,
+      p_items: [{ product_id: wholesaleProductId, quantity: 12 }],
+      p_delivery_address: "بغداد، الكرادة، شارع ١",
+    });
+    expect(wholesaleError).toBeNull();
+    expect(wholesaleOrders).toHaveLength(1);
+    const wholesaleOrder = wholesaleOrders?.[0] as { order_id: string; total_amount: number; supplier_business_id: string };
+    expect(wholesaleOrder.supplier_business_id).toBe(supplierOne);
+    expect(Number(wholesaleOrder.total_amount)).toBe(108000);
+
+    const { data: sampleRequestId, error: sampleError } = await buyer.client.rpc("create_product_sample_request", {
+      p_buyer_business_id: buyerBusiness,
+      p_product_id: wholesaleProductId,
+      p_quantity: 1,
+      p_delivery_address: "بغداد، الكرادة، شارع ١",
+    });
+    expect(sampleError).toBeNull();
+    expect(sampleRequestId).toBeTruthy();
+
+    const { data: invoiceId, error: invoiceError } = await supplierA.client.rpc("create_proforma_invoice", {
+      p_order_id: wholesaleOrder.order_id,
+      p_valid_until: null,
+      p_terms: "عرض أولي للاختبار",
+    });
+    expect(invoiceError).toBeNull();
+    expect(invoiceId).toBeTruthy();
+    const { data: buyerInvoice, error: buyerInvoiceError } = await buyer.client
+      .from("proforma_invoices").select("id,subtotal").eq("id", invoiceId).single();
+    expect(buyerInvoiceError).toBeNull();
+    expect(Number(buyerInvoice?.subtotal)).toBe(108000);
+
     await page.goto("/");
     await expect(page.getByText("سوق الجملة، أقرب إليك")).toBeVisible();
   } finally {
