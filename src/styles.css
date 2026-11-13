@@ -50,3 +50,35 @@
 @media(max-width:620px){.company-selector{align-items:stretch;flex-direction:column}.company-status{justify-content:space-between}.company-metrics{grid-template-columns:1fr 1fr}.form-pair{grid-template-columns:1fr}.company-product-row{flex-wrap:wrap}.company-product-main{min-width:55%}}
 
 .product-thumb img{width:100%;height:100%;object-fit:cover;border-radius:9px}
+
+/* Phase 3: buyer catalog and RFQ workflow */
+.rfq-workspace{min-width:0}
+.rfq-product .rfq-description{min-height:38px;color:#8492a1;font-size:11px;line-height:1.7}
+.rfq-full{width:100%;margin-top:12px}
+.rfq-modal-backdrop{position:fixed;inset:0;background:#101c2c99;z-index:30;display:grid;place-items:center;padding:16px}
+.rfq-modal{width:min(520px,100%);max-height:90vh;overflow:auto;display:grid;gap:13px;box-shadow:0 20px 70px #101c2c40}
+.rfq-modal label,.rfq-company-select{display:grid;gap:7px;color:#687789;font-size:12px}
+.rfq-modal input,.rfq-modal select,.rfq-modal textarea,.rfq-company-select select{width:100%;box-sizing:border-box;border:1px solid #dfe6ec;border-radius:9px;padding:11px 12px;background:white;font:inherit;font-size:12px}
+.rfq-modal textarea{resize:vertical}
+.rfq-role-switch{display:flex;gap:8px;margin:16px 0}
+.rfq-role-switch button{border:1px solid #dfe6ec;background:white;border-radius:9px;padding:10px 14px;font:inherit;font-size:12px;cursor:pointer}
+.rfq-role-switch button.selected{background:#203247;color:#d7f36a;border-color:#203247}
+.rfq-role-switch button:disabled{opacity:.4;cursor:not-allowed}
+.rfq-company-select{max-width:360px;margin:12px 0 18px}
+.rfq-request-card{border:1px solid #e6ebf0;border-radius:12px;padding:16px;margin:12px 0;background:#fff}
+.rfq-request-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.rfq-request-head b,.rfq-request-head small{display:block}
+.rfq-request-head small{font-size:10px;color:#98a3af;margin-top:5px}
+.rfq-request-card>p{font-size:12px;color:#718096}
+.rfq-line{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid #f0f2f5;font-size:12px}
+.rfq-offers{border-top:1px solid #e9edf1;margin-top:12px;padding-top:12px}
+.rfq-offers> b{font-size:12px}
+.rfq-offer{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #f0f2f5}
+.rfq-offer>div{flex:1;min-width:0}
+.rfq-offer b,.rfq-offer small{display:block}
+.rfq-offer b{font-size:12px}
+.rfq-offer small{font-size:10px;color:#8c98a6;margin-top:4px}
+.rfq-offer strong{font-size:13px;white-space:nowrap}
+.rfq-offer button{white-space:nowrap}
+.rfq-request-actions{display:flex;justify-content:flex-start;margin-top:12px}
+@media(max-width:620px){.rfq-offer{flex-wrap:wrap}.rfq-offer>div{flex-basis:55%}.rfq-offer strong{margin-right:auto}.rfq-request-head{flex-direction:column}.rfq-modal{padding:14px}}
