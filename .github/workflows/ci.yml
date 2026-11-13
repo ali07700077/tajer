@@ -85,8 +85,6 @@ jobs:
           NODE
 
       - name: Wait for Supabase API health
-        env:
-          SUPABASE_URL: ${{ env.SUPABASE_URL }}
         run: |
           for attempt in $(seq 1 60); do
             if curl --silent --show-error --fail --max-time 5 "$SUPABASE_URL/auth/v1/health" >/dev/null; then
