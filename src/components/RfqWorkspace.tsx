@@ -20,7 +20,6 @@ export default function RfqWorkspace({ mode }: { mode: "catalog" | "dashboard" }
   const [selectedSupplier,setSelectedSupplier] = useState("");
   const [products,setProducts] = useState<Product[]>([]);
   const [requests,setRequests] = useState<Rfq[]>([]);
-  const [offers,setOffers] = useState<Record<string,Offer[]>>({});
   const [supplierNames,setSupplierNames] = useState<Record<string,string>>({});
   const [search,setSearch] = useState("");
   const [category,setCategory] = useState("الكل");
