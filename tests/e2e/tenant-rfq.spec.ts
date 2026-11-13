@@ -207,7 +207,9 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
     const { data: buyerLedger, error: buyerLedgerError } = await buyer.client
       .from("escrow_ledger_entries").select("entry_type,amount").eq("order_id", wholesaleOrder.order_id);
     expect(buyerLedgerError).toBeNull();
-    expect(buyerLedger).toEqual([{ entry_type: "captured", amount: 108000 }]);
+    expect(buyerLedger).toHaveLength(1);
+    expect(buyerLedger?.[0].entry_type).toBe("captured");
+    expect(Number(buyerLedger?.[0].amount)).toBe(108000);
 
     const { data: sampleRequestId, error: sampleError } = await buyer.client.rpc("create_product_sample_request", {
       p_buyer_business_id: buyerBusiness,
