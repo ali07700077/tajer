@@ -72,7 +72,7 @@ jobs:
           const apiUrl = values.API_URL || values.SUPABASE_URL;
           const anonKey = values.ANON_KEY || values.PUBLISHABLE_KEY || values.SUPABASE_ANON_KEY;
           const serviceKey = values.SERVICE_ROLE_KEY || values.SECRET_KEY || values.SUPABASE_SERVICE_ROLE_KEY;
-          if (!apiUrl || !/^https?:\\/\\//.test(apiUrl) || !anonKey || !serviceKey) {
+          if (!apiUrl || !(apiUrl.startsWith("http://") || apiUrl.startsWith("https://")) || !anonKey || !serviceKey) {
             throw new Error("Supabase CLI JSON status is missing API_URL, ANON_KEY/PUBLISHABLE_KEY, or SERVICE_ROLE_KEY/SECRET_KEY");
           }
           for (const secret of [anonKey, serviceKey]) console.log("::add-mask::" + secret);
@@ -81,7 +81,7 @@ jobs:
             "SUPABASE_ANON_KEY=" + anonKey,
             "SUPABASE_SERVICE_ROLE_KEY=" + serviceKey,
             ""
-          ].join("\\n"));
+          ].join("\n"));
           NODE
 
       - name: Wait for Supabase API health
