@@ -31,7 +31,7 @@ jobs:
           set -euo pipefail
           : "${VITE_SUPABASE_URL:?Missing GitHub secret VITE_SUPABASE_URL}"
           : "${VITE_SUPABASE_PUBLISHABLE_KEY:?Add VITE_SUPABASE_PUBLISHABLE_KEY (or legacy VITE_SUPABASE_ANON_KEY) as a GitHub secret}"
-          printf '%s\\n' "VITE_SUPABASE_URL=$VITE_SUPABASE_URL" "VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY" > .env.production
+          printf '%s\n' "VITE_SUPABASE_URL=$VITE_SUPABASE_URL" "VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY" > .env.production
 
       - name: TypeScript check (temporary non-blocking)
         run: npm run typecheck
