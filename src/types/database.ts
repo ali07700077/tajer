@@ -900,6 +900,7 @@ export type Database = {
       append_escrow_ledger_entry: { Args: { p_order_id: string; p_entry_type: string; p_amount: number; p_idempotency_key: string; p_provider_reference?: string | null; p_metadata?: Json }; Returns: string }
       confirm_inventory_reservation: { Args: { p_order_id: string }; Returns: number }
       release_expired_inventory_reservations: { Args: { p_limit?: number }; Returns: number }
+      create_retail_orders: { Args: { p_items: Json; p_delivery_address: string }; Returns: Json }
       create_wholesale_orders: { Args: { p_buyer_business_id: string; p_items: Json; p_delivery_address: string }; Returns: Json }
       create_product_sample_request: { Args: { p_buyer_business_id: string; p_product_id: string; p_quantity: number; p_delivery_address: string }; Returns: string }
       create_proforma_invoice: { Args: { p_order_id: string; p_valid_until?: string | null; p_terms?: string | null }; Returns: string }
