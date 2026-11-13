@@ -91,7 +91,7 @@ export default function CompanyDashboard() {
         await updateCompanyProduct(editing.id, { name, description, price: numericPrice, retailPrice: retailEnabled ? numericRetailPrice : null, isRetailAvailable: retailEnabled, sampleAvailable: sampleEnabled, samplePrice: sampleEnabled ? numericSamplePrice : null, sampleMaxQuantity: numericSampleMax, minOrderQuantity: numericMoq });
         setMessage("تم تحديث المنتج.");
       } else {
-        await createCompanyProduct({ business: selected, name, description, price: numericPrice, retailPrice: retailEnabled ? numericRetailPrice : null, isRetailAvailable: retailEnabled, minOrderQuantity: numericMoq, image });
+        await createCompanyProduct({ business: selected, name, description, price: numericPrice, retailPrice: retailEnabled ? numericRetailPrice : null, isRetailAvailable: retailEnabled, sampleAvailable: sampleEnabled, samplePrice: sampleEnabled ? numericSamplePrice : null, sampleMaxQuantity: numericSampleMax, minOrderQuantity: numericMoq, image });
         setMessage("تمت إضافة المنتج وربطه بشركتك. المنتج غير منشور للعامة حتى اعتماد الشركة وتفعيل النشر.");
       }
       resetForm();
