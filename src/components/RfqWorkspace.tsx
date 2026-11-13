@@ -43,11 +43,11 @@ export default function RfqWorkspace({ mode }: { mode: "catalog" | "dashboard" }
 
   async function loadCatalog() {
     const {data,error}=await db().from("products")
-      .select("id,name,description,price,min_order_quantity,stock_quantity,category:categories(name_ar),businesses!inner(name_ar,verification_status,is_active,business_type)")
-      .eq("is_active",true).eq("businesses.is_active",true).eq("businesses.verification_status","approved").eq("businesses.business_type","supplier")
+      .select("id,business_id,name,description,price,min_order_quantity,stock_quantity,category:categories(name_ar)")
+      .eq("is_active",true)
       .order("created_at",{ascending:false});
     if(error) throw error;
-    setProducts((data??[]).map((p:any)=>({...p,supplier_name:p.businesses?.name_ar})));
+    const rows=(data??[]) as any[];\n    const supplierIds=Array.from(new Set(rows.map(p=>p.business_id)));\n    const {data:suppliers,error:supplierError}=supplierIds.length?await db().from("public_supplier_directory").select("id,name_ar").in("id",supplierIds):{data:[],error:null};\n    if(supplierError) throw supplierError;\n    const names=Object.fromEntries((suppliers??[]).map((b:any)=>[b.id,b.name_ar]));\n    setProducts(rows.map(p=>({...p,supplier_name:names[p.business_id]??"مورد معتمد"})));
   }
 
   async function loadBusinesses() {
@@ -66,7 +66,7 @@ export default function RfqWorkspace({ mode }: { mode: "catalog" | "dashboard" }
     setRequests(rows);
     const ids=Array.from(new Set(rows.flatMap(r=>(r.rfq_offers??[]).map(o=>o.supplier_business_id))));
     if(ids.length){
-      const {data:names,error:namesError}=await db().from("businesses").select("id,name_ar").in("id",ids);
+      const {data:names,error:namesError}=await db().from("public_supplier_directory").select("id,name_ar").in("id",ids);
       if(namesError) throw namesError;
       setSupplierNames(Object.fromEntries((names??[]).map((b:any)=>[b.id,b.name_ar])));
     } else setSupplierNames({});
