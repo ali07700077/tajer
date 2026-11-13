@@ -55,19 +55,49 @@ jobs:
         run: |
           supabase start
           supabase db reset
-          supabase status -o env > /tmp/supabase.env
-          cat /tmp/supabase.env >> "$GITHUB_ENV"
-          set -a
-          source /tmp/supabase.env
-          set +a
-          echo "::add-mask::$SERVICE_ROLE_KEY"
-          echo "::add-mask::$SECRET_KEY"
-          echo "::add-mask::$S3_PROTOCOL_ACCESS_KEY_SECRET"
-          {
-            echo "SUPABASE_URL=$API_URL"
-            echo "SUPABASE_ANON_KEY=$ANON_KEY"
-            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
-          } >> "$GITHUB_ENV"
+          supabase status -o json > /tmp/supabase-status.json
+          node <<'NODE'
+          const fs = require("node:fs");
+          const raw = JSON.parse(fs.readFileSync("/tmp/supabase-status.json", "utf8"));
+          const values = {};
+          function collect(value) {
+            if (Array.isArray(value)) return value.forEach(collect);
+            if (!value || typeof value !== "object") return;
+            for (const [key, item] of Object.entries(value)) {
+              if (typeof item === "string") values[key.toUpperCase()] = item;
+              else collect(item);
+            }
+          }
+          collect(raw);
+          const apiUrl = values.API_URL || values.SUPABASE_URL;
+          const anonKey = values.ANON_KEY || values.PUBLISHABLE_KEY || values.SUPABASE_ANON_KEY;
+          const serviceKey = values.SERVICE_ROLE_KEY || values.SECRET_KEY || values.SUPABASE_SERVICE_ROLE_KEY;
+          if (!apiUrl || !/^https?:\\/\\//.test(apiUrl) || !anonKey || !serviceKey) {
+            throw new Error("Supabase CLI JSON status is missing API_URL, ANON_KEY/PUBLISHABLE_KEY, or SERVICE_ROLE_KEY/SECRET_KEY");
+          }
+          for (const secret of [anonKey, serviceKey]) console.log("::add-mask::" + secret);
+          fs.appendFileSync(process.env.GITHUB_ENV, [
+            "SUPABASE_URL=" + apiUrl,
+            "SUPABASE_ANON_KEY=" + anonKey,
+            "SUPABASE_SERVICE_ROLE_KEY=" + serviceKey,
+            ""
+          ].join("\\n"));
+          NODE
+
+      - name: Wait for Supabase API health
+        env:
+          SUPABASE_URL: ${{ env.SUPABASE_URL }}
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail --max-time 5 "$SUPABASE_URL/auth/v1/health" >/dev/null; then
+              echo "Supabase Auth API is healthy."
+              exit 0
+            fi
+            echo "Waiting for Supabase API (attempt $attempt/60)..."
+            sleep 2
+          done
+          echo "Supabase API did not become healthy in time."
+          exit 1
 
       - name: Run database unit and RLS tests
         run: supabase test db
