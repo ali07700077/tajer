@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - implementation/bootstrap
+      - fix/db-migrations-rls
   pull_request:
     branches:
       - main
@@ -59,8 +60,8 @@ jobs:
         run: supabase test db
 
       - name: Run tenant isolation and RFQ lifecycle tests
-        env:
-          SUPABASE_URL: ${{ env.API_URL }}
-          SUPABASE_ANON_KEY: ${{ env.ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
-        run: npm run test:e2e
+        run: |
+          SUPABASE_URL="$API_URL" \
+          SUPABASE_ANON_KEY="$ANON_KEY" \
+          SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+          npm run test:e2e
