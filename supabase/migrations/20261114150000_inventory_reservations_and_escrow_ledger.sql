@@ -186,6 +186,8 @@ begin
     raise exception 'يرجى إدخال عنوان توصيل واضح';
   end if;
 
+  perform public.release_expired_inventory_reservations(250);
+
   select count(*), count(distinct (value->>'product_id'))
     into v_count, v_distinct_count
   from jsonb_array_elements(p_items);
@@ -298,6 +300,8 @@ begin
   if char_length(trim(coalesce(p_delivery_address,''))) < 8 then
     raise exception 'يرجى إدخال عنوان توصيل واضح' using errcode = '22023';
   end if;
+
+  perform public.release_expired_inventory_reservations(250);
 
   select count(*), count(distinct value->>'product_id')
     into v_item_count, v_distinct_count
