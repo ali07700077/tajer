@@ -7,6 +7,8 @@ export type CompanyProduct = {
   name: string;
   description: string | null;
   price: number;
+  retail_price: number | null;
+  is_retail_available: boolean;
   min_order_quantity: number;
   image_path: string | null;
   is_active: boolean;
@@ -20,7 +22,7 @@ function client() {
 
 export async function getCompanyProducts(businessId: string): Promise<CompanyProduct[]> {
   const { data, error } = await client().from("products")
-    .select("id,business_id,name,description,price,min_order_quantity,image_path,is_active,created_at")
+    .select("id,business_id,name,description,price,retail_price,is_retail_available,min_order_quantity,image_path,is_active,created_at")
     .eq("business_id", businessId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -32,6 +34,8 @@ export async function createCompanyProduct(input: {
   name: string;
   description: string;
   price: number;
+  retailPrice?: number | null;
+  isRetailAvailable?: boolean;
   minOrderQuantity: number;
   image?: File | null;
 }): Promise<void> {
@@ -64,6 +68,8 @@ export async function createCompanyProduct(input: {
     name: input.name.trim(),
     description: input.description.trim() || null,
     price: input.price,
+    retail_price: input.isRetailAvailable ? input.retailPrice : null,
+    is_retail_available: Boolean(input.isRetailAvailable),
     min_order_quantity: input.minOrderQuantity,
     image_path: imagePath,
     is_active: false,
@@ -75,12 +81,14 @@ export async function createCompanyProduct(input: {
 }
 
 export async function updateCompanyProduct(productId: string, input: {
-  name: string; description: string; price: number; minOrderQuantity: number;
+  name: string; description: string; price: number; retailPrice?: number | null; isRetailAvailable?: boolean; minOrderQuantity: number;
 }): Promise<void> {
   const { error } = await client().from("products").update({
     name: input.name.trim(),
     description: input.description.trim() || null,
     price: input.price,
+    retail_price: input.isRetailAvailable ? input.retailPrice : null,
+    is_retail_available: Boolean(input.isRetailAvailable),
     min_order_quantity: input.minOrderQuantity,
   }).eq("id", productId);
   if (error) throw error;

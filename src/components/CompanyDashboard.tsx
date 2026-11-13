@@ -20,6 +20,8 @@ export default function CompanyDashboard() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [moq, setMoq] = useState("1");
+  const [retailPrice, setRetailPrice] = useState("");
+  const [retailEnabled, setRetailEnabled] = useState(false);
   const [image, setImage] = useState<File | null>(null);
   const [message, setMessage] = useState("");
 
@@ -59,28 +61,29 @@ export default function CompanyDashboard() {
   useEffect(() => { if (selectedId) void loadProducts(selectedId); else setProducts([]); }, [selectedId]);
 
   function resetForm() {
-    setName(""); setDescription(""); setPrice(""); setMoq("1"); setImage(null); setEditing(null); setShowForm(false);
+    setName(""); setDescription(""); setPrice(""); setMoq("1"); setRetailPrice(""); setRetailEnabled(false); setImage(null); setEditing(null); setShowForm(false);
   }
 
   function startEdit(product: CompanyProduct) {
     setEditing(product); setName(product.name); setDescription(product.description ?? "");
     setPrice(String(product.price)); setMoq(String(product.min_order_quantity));
+    setRetailPrice(product.retail_price == null ? "" : String(product.retail_price)); setRetailEnabled(product.is_retail_available);
     setImage(null); setShowForm(true);
   }
 
   async function submitProduct() {
     if (!selected) return;
-    const numericPrice = Number(price), numericMoq = Number(moq);
-    if (!name.trim() || !Number.isFinite(numericPrice) || numericPrice <= 0 || !Number.isInteger(numericMoq) || numericMoq < 1) {
+    const numericPrice = Number(price), numericMoq = Number(moq), numericRetailPrice = Number(retailPrice);
+    if (!name.trim() || !Number.isFinite(numericPrice) || numericPrice <= 0 || !Number.isInteger(numericMoq) || numericMoq < 1 || (retailEnabled && (!Number.isFinite(numericRetailPrice) || numericRetailPrice <= 0))) {
       setMessage("أدخل اسم المنتج وسعراً صحيحاً وكمية دنيا صحيحة (1 أو أكثر)."); return;
     }
     setBusy(true); setMessage("");
     try {
       if (editing) {
-        await updateCompanyProduct(editing.id, { name, description, price: numericPrice, minOrderQuantity: numericMoq });
+        await updateCompanyProduct(editing.id, { name, description, price: numericPrice, retailPrice: retailEnabled ? numericRetailPrice : null, isRetailAvailable: retailEnabled, minOrderQuantity: numericMoq });
         setMessage("تم تحديث المنتج.");
       } else {
-        await createCompanyProduct({ business: selected, name, description, price: numericPrice, minOrderQuantity: numericMoq, image });
+        await createCompanyProduct({ business: selected, name, description, price: numericPrice, retailPrice: retailEnabled ? numericRetailPrice : null, isRetailAvailable: retailEnabled, minOrderQuantity: numericMoq, image });
         setMessage("تمت إضافة المنتج وربطه بشركتك. المنتج غير منشور للعامة حتى اعتماد الشركة وتفعيل النشر.");
       }
       resetForm();
@@ -114,12 +117,14 @@ export default function CompanyDashboard() {
         <div className="panel-head"><b>{editing ? "تعديل المنتج" : "إضافة منتج جديد"}</b><button className="outline" onClick={resetForm}>إلغاء</button></div>
         <label>اسم المنتج<input value={name} onChange={e => setName(e.target.value)} maxLength={160} placeholder="مثال: كابل شحن سريع" /></label>
         <label>وصف المنتج<textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="المواصفات والتفاصيل..." /></label>
-        <div className="form-pair"><label>سعر الجملة (د.ع)<input type="number" min="1" step="1" value={price} onChange={e => setPrice(e.target.value)} /></label><label>الحد الأدنى للطلب (MOQ)<input type="number" min="1" step="1" value={moq} onChange={e => setMoq(e.target.value)} /></label></div>
+        <div className="form-pair"><label>سعر الجملة للقطعة (د.ع)<input type="number" min="1" step="1" value={price} onChange={e => setPrice(e.target.value)} /></label><label>الحد الأدنى للجملة (MOQ)<input type="number" min="1" step="1" value={moq} onChange={e => setMoq(e.target.value)} /></label></div>
+        <label className="retail-toggle"><input type="checkbox" checked={retailEnabled} onChange={e => setRetailEnabled(e.target.checked)} /> إتاحة البيع بالمفرد لهذا المنتج</label>
+        {retailEnabled && <label>سعر المفرد (د.ع)<input type="number" min="1" step="1" value={retailPrice} onChange={e => setRetailPrice(e.target.value)} placeholder="سعر القطعة للمستهلك" /></label>}
         {!editing && <label>صورة المنتج (اختيارية، JPG/PNG/WEBP حتى 5MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setImage(e.target.files?.[0] ?? null)} /></label>}
         <button className="primary" disabled={busy} onClick={submitProduct}>{busy ? "جارٍ الحفظ..." : editing ? "حفظ التعديلات" : "إضافة المنتج"}</button>
       </div>}
       <div className="company-products-head"><h4>منتجات الشركة</h4><button className="outline" onClick={() => selected && loadProducts(selected.id)}>تحديث القائمة</button></div>
-      {loading ? <p>جارٍ تحميل المنتجات...</p> : products.length === 0 ? <div className="empty">لا توجد منتجات لهذه الشركة بعد. أضف أول منتج إلى كتالوج الجملة.</div> : <div className="company-product-list">{products.map(p => <article className="company-product-row" key={p.id}><div className="product-thumb">{imageUrls[p.id] ? <img src={imageUrls[p.id]} alt={p.name} /> : "▦"}</div><div className="company-product-main"><b>{p.name}</b><small>{p.description || "لا يوجد وصف"} · MOQ: {p.min_order_quantity}</small><strong>{money(Number(p.price))}</strong></div><span className="draft-pill">{p.is_active ? "مفعّل" : "مسودة"}</span><button className="outline" disabled={busy} onClick={() => startEdit(p)}>تعديل</button><button className="outline danger-outline" disabled={busy} onClick={() => removeProduct(p)}>حذف</button></article>)}</div>}
+      {loading ? <p>جارٍ تحميل المنتجات...</p> : products.length === 0 ? <div className="empty">لا توجد منتجات لهذه الشركة بعد. أضف أول منتج إلى كتالوج الجملة.</div> : <div className="company-product-list">{products.map(p => <article className="company-product-row" key={p.id}><div className="product-thumb">{imageUrls[p.id] ? <img src={imageUrls[p.id]} alt={p.name} /> : "▦"}</div><div className="company-product-main"><b>{p.name}</b><small>{p.description || "لا يوجد وصف"} · MOQ: {p.min_order_quantity}</small><strong>جملة: {money(Number(p.price))}</strong>{p.is_retail_available && p.retail_price != null && <small>مفرد: {money(Number(p.retail_price))}</small>}</div><span className="draft-pill">{p.is_active ? "مفعّل" : "مسودة"}</span><button className="outline" disabled={busy} onClick={() => startEdit(p)}>تعديل</button><button className="outline danger-outline" disabled={busy} onClick={() => removeProduct(p)}>حذف</button></article>)}</div>}
     </>}
     {message && <p className="notice account-message">{message}</p>}
   </section>;
