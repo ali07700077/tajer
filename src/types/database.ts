@@ -364,7 +364,9 @@ export type Database = {
       }
       orders: {
         Row: {
-          buyer_business_id: string
+          buyer_business_id: string | null
+          buyer_user_id: string | null
+          order_type: string
           created_at: string
           currency: string
           delivery_address: string | null
@@ -377,7 +379,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          buyer_business_id: string
+          buyer_business_id?: string | null
+          buyer_user_id?: string | null
+          order_type?: string
           created_at?: string
           currency?: string
           delivery_address?: string | null
@@ -390,7 +394,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          buyer_business_id?: string
+          buyer_business_id?: string | null
+          buyer_user_id?: string | null
+          order_type?: string
           created_at?: string
           currency?: string
           delivery_address?: string | null
@@ -425,6 +431,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      inventory_reservations: {
+        Row: { id: string; order_id: string; product_id: string; supplier_business_id: string; quantity: number; status: string; expires_at: string; created_at: string; resolved_at: string | null }
+        Insert: { id?: string; order_id: string; product_id: string; supplier_business_id: string; quantity: number; status?: string; expires_at: string; created_at?: string; resolved_at?: string | null }
+        Update: { id?: string; order_id?: string; product_id?: string; supplier_business_id?: string; quantity?: number; status?: string; expires_at?: string; created_at?: string; resolved_at?: string | null }
+        Relationships: []
+      }
+      escrow_ledger_entries: {
+        Row: { id: string; order_id: string; entry_type: string; amount: number; currency: string; provider_reference: string | null; idempotency_key: string; metadata: Json; actor_id: string | null; created_at: string }
+        Insert: { id?: string; order_id: string; entry_type: string; amount: number; currency?: string; provider_reference?: string | null; idempotency_key: string; metadata?: Json; actor_id?: string | null; created_at?: string }
+        Update: { id?: string; order_id?: string; entry_type?: string; amount?: number; currency?: string; provider_reference?: string | null; idempotency_key?: string; metadata?: Json; actor_id?: string | null; created_at?: string }
+        Relationships: []
       }
       permissions: {
         Row: {
@@ -513,6 +531,8 @@ export type Database = {
           sample_max_quantity: number
           sku: string | null
           stock_quantity: number
+          reserved_quantity: number
+          available_quantity: number
           updated_at: string
         }
         Insert: {
@@ -877,6 +897,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      append_escrow_ledger_entry: { Args: { p_order_id: string; p_entry_type: string; p_amount: number; p_idempotency_key: string; p_provider_reference?: string | null; p_metadata?: Json }; Returns: string }
+      confirm_inventory_reservation: { Args: { p_order_id: string }; Returns: number }
+      release_expired_inventory_reservations: { Args: { p_limit?: number }; Returns: number }
       create_wholesale_orders: { Args: { p_buyer_business_id: string; p_items: Json; p_delivery_address: string }; Returns: Json }
       create_product_sample_request: { Args: { p_buyer_business_id: string; p_product_id: string; p_quantity: number; p_delivery_address: string }; Returns: string }
       create_proforma_invoice: { Args: { p_order_id: string; p_valid_until?: string | null; p_terms?: string | null }; Returns: string }
