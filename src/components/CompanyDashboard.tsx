@@ -3,6 +3,7 @@ import { getCurrentSession, onSessionChange } from "../lib/auth";
 import { getMyBusinesses, type BusinessSummary } from "../lib/businesses";
 import { addProductPriceTier, createCompanyProduct, deleteCompanyProduct, deleteProductPriceTier, getCompanyProductImageUrl, getCompanyProducts, getProductPriceTiers, updateCompanyProduct, type CompanyProduct, type ProductPriceTier } from "../lib/company-products";
 import { supabase } from "../lib/supabase";
+import { createProformaInvoice } from "../lib/wholesale-orders";
 
 const money = (value: number) => new Intl.NumberFormat("en-US").format(value) + " د.ع";
 
@@ -32,6 +33,7 @@ export default function CompanyDashboard() {
   const [tierMinQuantity, setTierMinQuantity] = useState("");
   const [tierUnitPrice, setTierUnitPrice] = useState("");
   const [tierBusy, setTierBusy] = useState(false);
+  const [supplierOrders, setSupplierOrders] = useState<any[]>([]);
 
   const selected = businesses.find(b => b.id === selectedId) ?? null;
 
@@ -39,6 +41,22 @@ export default function CompanyDashboard() {
     const rows = await getMyBusinesses();
     setBusinesses(rows);
     setSelectedId(current => rows.some(row => row.id === current) ? current : rows[0]?.id ?? "");
+  }
+
+  async function loadSupplierOrders(businessId: string) {
+    if (!supabase) return;
+    try {
+      const { data, error } = await (supabase as any).from("orders")
+        .select("id,status,total_amount,created_at,proforma_invoices(id,invoice_number,status)")
+        .eq("supplier_business_id", businessId)
+        .eq("order_type", "b2b")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      setSupplierOrders(data ?? []);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "تعذر تحميل طلبات المورد.");
+    }
   }
 
   async function loadProducts(businessId: string) {
@@ -66,7 +84,7 @@ export default function CompanyDashboard() {
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
 
-  useEffect(() => { if (selectedId) void loadProducts(selectedId); else setProducts([]); }, [selectedId]);
+  useEffect(() => { if (selectedId) { void loadProducts(selectedId); if (businesses.find(item => item.id === selectedId)?.business_type === "supplier") void loadSupplierOrders(selectedId); } else { setProducts([]); setSupplierOrders([]); } }, [selectedId, businesses]);
 
   function resetForm() {
     setName(""); setDescription(""); setPrice(""); setMoq("1"); setRetailPrice(""); setRetailEnabled(false); setSampleEnabled(false); setSamplePrice(""); setSampleMaxQuantity("1"); setImage(null); setEditing(null); setShowForm(false);
@@ -168,6 +186,23 @@ export default function CompanyDashboard() {
       <div className="company-products-head"><h4>منتجات الشركة</h4><button className="outline" onClick={() => selected && loadProducts(selected.id)}>تحديث القائمة</button></div>
       {loading ? <p>جارٍ تحميل المنتجات...</p> : products.length === 0 ? <div className="empty">لا توجد منتجات لهذه الشركة بعد. أضف أول منتج إلى كتالوج الجملة.</div> : <div className="company-product-list">{products.map(p => <article className="company-product-row" key={p.id}><div className="product-thumb">{imageUrls[p.id] ? <img src={imageUrls[p.id]} alt={p.name} /> : "▦"}</div><div className="company-product-main"><b>{p.name}</b><small>{p.description || "لا يوجد وصف"} · MOQ: {p.min_order_quantity}</small><strong>جملة: {money(Number(p.price))}</strong>{p.is_retail_available && p.retail_price != null && <small>مفرد: {money(Number(p.retail_price))}</small>}</div><span className="draft-pill">{p.is_active ? "مفعّل" : "مسودة"}</span><button className="outline" disabled={busy} onClick={() => startEdit(p)}>تعديل</button><button className="outline" disabled={busy} onClick={() => void openTierEditor(p)}>شرائح الجملة</button><button className="outline danger-outline" disabled={busy} onClick={() => removeProduct(p)}>حذف</button></article>)}</div>}
     </>}
+    {selected?.business_type === "supplier" && <div className="product-form">
+      <div className="panel-head"><b>طلبات الجملة والفواتير الأولية</b><button className="outline" onClick={() => void loadSupplierOrders(selected.id)}>تحديث</button></div>
+      {supplierOrders.length === 0 ? <p className="muted">لا توجد طلبات جملة لهذا المورد حالياً.</p> : supplierOrders.map(order => {
+        const invoice = Array.isArray(order.proforma_invoices) ? order.proforma_invoices[0] : order.proforma_invoices;
+        return <article className="company-product-row" key={order.id}>
+          <div className="company-product-main"><b>طلب {String(order.id).slice(0,8)}</b><small>الحالة: {order.status} · {new Date(order.created_at).toLocaleDateString("ar-IQ")}</small><strong>{money(Number(order.total_amount))}</strong>
+            {invoice && <small>فاتورة أولية: {invoice.invoice_number} · {invoice.status}</small>}
+          </div>
+          {!invoice && <button className="outline" disabled={busy} onClick={async () => {
+            setBusy(true);
+            try { await createProformaInvoice({ orderId: order.id }); await loadSupplierOrders(selected.id); setMessage("تم إصدار الفاتورة الأولية الرسمية للطلب."); }
+            catch (e) { setMessage(e instanceof Error ? e.message : "تعذر إصدار الفاتورة الأولية."); }
+            finally { setBusy(false); }
+          }}>إصدار Proforma Invoice</button>}
+        </article>;
+      })}
+    </div>}
     {tierProduct && <div className="product-form tier-editor">
       <div className="panel-head"><b>شرائح أسعار الجملة — {tierProduct.name}</b><button className="outline" onClick={() => setTierProduct(null)}>إغلاق</button></div>
       <p className="muted">سعر الأساس: {money(Number(tierProduct.price))} · الحد الأدنى: {tierProduct.min_order_quantity} قطعة. كل شريحة تطبق عند بلوغ كميتها أو تجاوزها.</p>
