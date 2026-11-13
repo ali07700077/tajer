@@ -61,8 +61,8 @@ jobs:
         run: supabase test db
 
       - name: Run tenant isolation and RFQ lifecycle tests
-        run: |
-          SUPABASE_URL="$API_URL" \
-          SUPABASE_ANON_KEY="$ANON_KEY" \
-          SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
-          npm run test:e2e
+        env:
+          SUPABASE_URL: ${{ env.API_URL }}
+          SUPABASE_ANON_KEY: ${{ env.ANON_KEY || env.PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY || env.SECRET_KEY }}
+        run: npm run test:e2e
