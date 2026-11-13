@@ -56,13 +56,17 @@ jobs:
           supabase start
           supabase db reset
           supabase status -o env >> "$GITHUB_ENV"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "::add-mask::$SECRET_KEY"
+          echo "::add-mask::$S3_PROTOCOL_ACCESS_KEY_SECRET"
+          {
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
 
       - name: Run database unit and RLS tests
         run: supabase test db
 
       - name: Run tenant isolation and RFQ lifecycle tests
-        env:
-          SUPABASE_URL: ${{ env.API_URL }}
-          SUPABASE_ANON_KEY: ${{ env.ANON_KEY || env.PUBLISHABLE_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY || env.SECRET_KEY }}
         run: npm run test:e2e
