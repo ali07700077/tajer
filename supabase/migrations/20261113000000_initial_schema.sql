@@ -152,6 +152,45 @@ create or replace function public.has_permission(p_key text)
 returns boolean language sql stable security definer set search_path=''
 as $$ select exists(select 1 from public.staff_roles sr join public.roles r on r.id=sr.role_id where sr.user_id=auth.uid() and r.key='super_admin')
 or exists(select 1 from public.staff_roles sr join public.role_permissions rp on rp.role_id=sr.role_id where sr.user_id=auth.uid() and rp.permission_key=p_key); $$;
+
+create or replace function public.create_business(
+ p_business_type public.business_type,
+ p_name_ar text,
+ p_governorate_id uuid,
+ p_city_id uuid default null,
+ p_phone text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path=''
+as $function$
+declare v_id uuid;
+begin
+ if auth.uid() is null then
+   raise exception 'not authenticated' using errcode='28000';
+ end if;
+ if not exists(select 1 from public.profiles where id=auth.uid() and status='active') then
+   raise exception 'account is not active' using errcode='42501';
+ end if;
+ if char_length(trim(coalesce(p_name_ar,'')))<2 then
+   raise exception 'business name is required' using errcode='22023';
+ end if;
+ if not exists(select 1 from public.governorates where id=p_governorate_id and is_active) then
+   raise exception 'governorate is not available' using errcode='22023';
+ end if;
+ if (select count(*) from public.business_members where user_id=auth.uid() and member_role='owner')>=3 then
+   raise exception 'business limit reached' using errcode='54000';
+ end if;
+ insert into public.businesses(business_type,name_ar,governorate_id,city_id,phone,created_by)
+ values(p_business_type,trim(p_name_ar),p_governorate_id,p_city_id,p_phone,auth.uid())
+ returning id into v_id;
+ insert into public.business_members(business_id,user_id,member_role)
+ values(v_id,auth.uid(),'owner');
+ return v_id;
+end;
+$function$;
+
 create or replace function public.set_updated_at()
 returns trigger language plpgsql set search_path='' as $$ begin new.updated_at=now(); return new; end $$;
 create or replace function public.businesses_validate_city()
