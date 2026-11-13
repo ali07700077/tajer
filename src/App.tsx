@@ -6,13 +6,15 @@ import AccountCenter from "./components/AccountCenter";
 import CompanyDashboard from "./components/CompanyDashboard";
 import RfqWorkspace from "./components/RfqWorkspace";
 import RetailCatalog from "./components/RetailCatalog";
+import WholesaleCheckout from "./components/WholesaleCheckout";
 
-type Section = "overview" | "products" | "retail" | "rfqs" | "orders" | "suppliers" | "businesses" | "company";
+type Section = "overview" | "products" | "retail" | "wholesale" | "rfqs" | "orders" | "suppliers" | "businesses" | "company";
 type Product = { id: string; name: string; category: string; price: number; min: number; stock: string; color: string; initials: string; };
 const nav: { id: Section; label: string; icon: string }[] = [
   { id: "overview", label: "الرئيسية", icon: "⌂" },
   { id: "products", label: "كتالوج الجملة", icon: "▦" },
   { id: "retail", label: "تسوق المفرد", icon: "🛍" },
+  { id: "wholesale", label: "سلة الجملة", icon: "🛒" },
   { id: "rfqs", label: "طلبات عروض الأسعار", icon: "▤" },
   { id: "orders", label: "الطلبات", icon: "▣" },
   { id: "suppliers", label: "الموردون", icon: "♧" },
@@ -78,7 +80,7 @@ export default function App() {
       <div className="sidebar-bottom"><div className="help-card"><span>هل تحتاج إلى مساعدة؟</span><small>منصة تربط التجار بالموردين</small><button onClick={() => setNotice("سيتم تفعيل مركز المساعدة في مرحلة لاحقة.")}>مركز المساعدة ←</button></div><div className="profile"><div className="avatar">ت</div><div><b>زائر المنصة</b><small>تصفح الكتالوج</small></div><span className="dots">•••</span></div></div>
     </aside>
     <main className="main">
-      <header className="topbar"><div className="crumb">تاجر <span>/</span> {title}</div><div className="top-actions"><span className={isSupabaseConfigured ? "connection on" : "connection"}><i/> {isSupabaseConfigured ? "إعداد الاتصال متوفر" : "وضع العرض الأولي"}</span><button className="icon-btn" onClick={() => setSection("rfqs")}>السلة {cartCount ? `(${cartCount})` : ""}</button><button className="user-chip" onClick={() => setShowAuth(v => !v)}>تسجيل الدخول</button></div></header>
+      <header className="topbar"><div className="crumb">تاجر <span>/</span> {title}</div><div className="top-actions"><span className={isSupabaseConfigured ? "connection on" : "connection"}><i/> {isSupabaseConfigured ? "إعداد الاتصال متوفر" : "وضع العرض الأولي"}</span><button className="icon-btn" onClick={() => setSection("wholesale")}>السلة {cartCount ? `(${cartCount})` : ""}</button><button className="user-chip" onClick={() => setShowAuth(v => !v)}>تسجيل الدخول</button></div></header>
       <div className="content">
         <div className="welcome-row"><div><div className="eyebrow">سوق هجين للجملة والمفرد B2B + B2C · العراق</div><h1>{section === "overview" ? "سوق الجملة، أقرب إليك" : title}</h1><p>اكتشف الموردين، اشترِ بالمفرد أو بالجملة، وأرسل طلبات الأسعار من مكان واحد.</p></div><button className="primary" onClick={() => setSection("products")}>تصفح المنتجات ←</button></div>
         {notice && <div className="notice"><span>ⓘ</span><p>{notice}</p><button onClick={() => setNotice("")}>×</button></div>}
@@ -98,6 +100,7 @@ export default function App() {
         </>}
         {section === "products" && <RfqWorkspace mode="catalog" />}
         {section === "retail" && <RetailCatalog />}
+        {section === "wholesale" && <WholesaleCheckout />}
         {section === "rfqs" && <RfqWorkspace mode="dashboard" />}
         {section === "businesses" && <AccountCenter />}
         {section === "company" && <CompanyDashboard />}
