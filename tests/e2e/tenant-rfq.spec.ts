@@ -28,7 +28,10 @@ async function createActor(admin: SupabaseClient, label: string): Promise<Actor>
 }
 
 test("company isolation and complete RFQ lifecycle", async ({ page }) => {
-  expect(url, "Supabase URL must be supplied by the local Supabase CLI").toMatch(/^https?:\\/\\//);
+  expect(
+    url.startsWith("http://") || url.startsWith("https://"),
+    "Supabase URL must be supplied by the local Supabase CLI",
+  ).toBe(true);
   expect(anonKey, "Supabase anon key is required").toBeTruthy();
   expect(serviceKey, "Supabase service role key is required").toBeTruthy();
 
