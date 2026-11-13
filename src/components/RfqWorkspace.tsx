@@ -47,7 +47,12 @@ export default function RfqWorkspace({ mode }: { mode: "catalog" | "dashboard" }
       .eq("is_active",true)
       .order("created_at",{ascending:false});
     if(error) throw error;
-    const rows=(data??[]) as any[];\n    const supplierIds=Array.from(new Set(rows.map(p=>p.business_id)));\n    const {data:suppliers,error:supplierError}=supplierIds.length?await db().from("public_supplier_directory").select("id,name_ar").in("id",supplierIds):{data:[],error:null};\n    if(supplierError) throw supplierError;\n    const names=Object.fromEntries((suppliers??[]).map((b:any)=>[b.id,b.name_ar]));\n    setProducts(rows.map(p=>({...p,supplier_name:names[p.business_id]??"مورد معتمد"})));
+    const rows=(data??[]) as any[];
+    const supplierIds=Array.from(new Set(rows.map(p=>p.business_id)));
+    const {data:suppliers,error:supplierError}=supplierIds.length?await db().from("public_supplier_directory").select("id,name_ar").in("id",supplierIds):{data:[],error:null};
+    if(supplierError) throw supplierError;
+    const names=Object.fromEntries((suppliers??[]).map((b:any)=>[b.id,b.name_ar]));
+    setProducts(rows.map(p=>({...p,supplier_name:names[p.business_id]??"مورد معتمد"})));
   }
 
   async function loadBusinesses() {
