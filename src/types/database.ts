@@ -444,6 +444,24 @@ export type Database = {
         }
         Relationships: []
       }
+      product_sample_requests: {
+        Row: { id: string; product_id: string; buyer_business_id: string; supplier_business_id: string; requested_by: string; quantity: number; unit_price: number; total_amount: number; status: string; delivery_address: string; created_at: string; updated_at: string }
+        Insert: { id?: string; product_id: string; buyer_business_id: string; supplier_business_id: string; requested_by: string; quantity: number; unit_price: number; status?: string; delivery_address: string; created_at?: string; updated_at?: string }
+        Update: { status?: string; updated_at?: string }
+        Relationships: []
+      }
+      proforma_invoices: {
+        Row: { id: string; invoice_number: string; order_id: string; supplier_business_id: string; buyer_business_id: string; currency: string; subtotal: number; terms: string | null; issued_at: string; valid_until: string | null; status: string; created_by: string; created_at: string }
+        Insert: { id?: string; invoice_number: string; order_id: string; supplier_business_id: string; buyer_business_id: string; currency?: string; subtotal: number; terms?: string | null; issued_at?: string; valid_until?: string | null; status?: string; created_by: string; created_at?: string }
+        Update: { status?: string; valid_until?: string | null; terms?: string | null }
+        Relationships: []
+      }
+      proforma_invoice_items: {
+        Row: { id: string; proforma_invoice_id: string; product_id: string; product_name: string; quantity: number; unit_price: number; line_total: number }
+        Insert: { id?: string; proforma_invoice_id: string; product_id: string; product_name: string; quantity: number; unit_price: number }
+        Update: never
+        Relationships: []
+      }
       product_price_tiers: {
         Row: {
           created_at: string
@@ -490,6 +508,9 @@ export type Database = {
           price: number
           retail_price: number | null
           is_retail_available: boolean
+          sample_available: boolean
+          sample_price: number | null
+          sample_max_quantity: number
           sku: string | null
           stock_quantity: number
           updated_at: string
@@ -507,6 +528,9 @@ export type Database = {
           price?: number
           retail_price?: number | null
           is_retail_available?: boolean
+          sample_available?: boolean
+          sample_price?: number | null
+          sample_max_quantity?: number
           sku?: string | null
           stock_quantity?: number
           updated_at?: string
@@ -522,6 +546,11 @@ export type Database = {
           min_order_quantity?: number
           name?: string
           price?: number
+          retail_price?: number | null
+          is_retail_available?: boolean
+          sample_available?: boolean
+          sample_price?: number | null
+          sample_max_quantity?: number
           sku?: string | null
           stock_quantity?: number
           updated_at?: string
@@ -848,6 +877,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_wholesale_orders: { Args: { p_buyer_business_id: string; p_items: Json; p_delivery_address: string }; Returns: Json }
+      create_product_sample_request: { Args: { p_buyer_business_id: string; p_product_id: string; p_quantity: number; p_delivery_address: string }; Returns: string }
+      create_proforma_invoice: { Args: { p_order_id: string; p_valid_until?: string | null; p_terms?: string | null }; Returns: string }
       accept_rfq_offer: { Args: { p_offer_id: string }; Returns: undefined }
       create_business: {
         Args: {
