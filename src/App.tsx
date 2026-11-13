@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { getPublicCatalog, type CatalogProduct } from "./lib/catalog";
 import { signInWithEmail } from "./lib/auth";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
+import AccountCenter from "./components/AccountCenter";
 
-type Section = "overview" | "products" | "rfqs" | "orders" | "suppliers";
+type Section = "overview" | "products" | "rfqs" | "orders" | "suppliers" | "businesses";
 type Product = { id: string; name: string; category: string; price: number; min: number; stock: string; color: string; initials: string; };
 const nav: { id: Section; label: string; icon: string }[] = [
   { id: "overview", label: "الرئيسية", icon: "⌂" },
@@ -11,6 +12,7 @@ const nav: { id: Section; label: string; icon: string }[] = [
   { id: "rfqs", label: "طلبات عروض الأسعار", icon: "▤" },
   { id: "orders", label: "الطلبات", icon: "▣" },
   { id: "suppliers", label: "الموردون", icon: "♧" },
+  { id: "businesses", label: "شركاتي والحساب", icon: "◉" },
 ];
 const money = (v: number) => new Intl.NumberFormat("en-US").format(v) + " د.ع";
 type CartLine = { product: Product; quantity: number };
@@ -106,7 +108,7 @@ export default function App() {
           {catalogLoading && <div className="notice">جارٍ تحميل المنتجات الحقيقية من قاعدة البيانات...</div>}
           {!catalogLoading && products.length === 0 && <div className="notice">لا توجد منتجات منشورة من موردين معتمدين حالياً. أضف أول مورد ومنتجاته لعرضها هنا.</div>}
           <div className="stat-grid">
-            <Stat label="منتجات في الكتالوج التجريبي" value="06" delta="نماذج أولية للعرض" icon="▦" />
+            <Stat label="منتجات في الكتالوج" value={String(products.length).padStart(2, "0")} delta="بيانات حقيقية من قاعدة البيانات" icon="▦" />
             <Stat label="منتجات في طلبك" value={String(cart.length)} delta={`${cartCount} قطعة إجمالاً`} icon="▤" />
             <Stat label="قيمة الطلب التقديرية" value={money(cartTotal)} delta="قبل تأكيد سعر المورد" icon="▣" />
             <Stat label="طريقة الشراء" value="جملة" delta="الحد الأدنى يختلف حسب المنتج" icon="♧" />
@@ -130,6 +132,7 @@ export default function App() {
             {rfqSent && <p className="muted">تم تجهيز معاينة الطلب. الإرسال الفعلي يتطلب تسجيل الدخول وربط منشأتك.</p>}
           </>}
         </section>}
+        {section === "businesses" && <AccountCenter />}
         {section === "orders" && <Empty title="إدارة الطلبات" desc="ستظهر هنا الطلبات المؤكدة وحالات التجهيز والتسليم بعد تفعيل دورة الطلب." />}
         {section === "suppliers" && <Empty title="بوابة الموردين" desc="سيتمكن المورد من إنشاء ملف شركته وإضافة المنتجات وإدارة عروض الأسعار." action={() => setNotice("تسجيل الموردين قيد التنفيذ ضمن المرحلة التالية.")} />}
         <footer>© 2026 تاجر · منصة التجارة بالجملة في العراق <span>نسخة تطوير أولية</span></footer>
