@@ -20,3 +20,31 @@
 .draft-pill{background:#fff6df;color:#9b6c1e;border-radius:20px;padding:6px 11px;font-size:11px}
 .account-message{display:block;margin-top:14px}
 @media(max-width:620px){.auth-panel-wide,.account-form{grid-template-columns:1fr}.auth-heading,.account-form>.primary,.account-form>small,.mode-switch{grid-column:1}.account-center{padding:14px}}
+
+/* Phase 2: company dashboard and B2B product management */
+.company-dashboard{max-width:1040px;margin:0 auto}
+.company-selector{display:flex;align-items:end;justify-content:space-between;gap:16px;padding:16px 0;border-top:1px solid #edf0f3}
+.company-selector label,.product-form label{display:grid;gap:7px;color:#687789;font-size:12px;flex:1}
+.company-selector select,.product-form input,.product-form textarea{width:100%;box-sizing:border-box;border:1px solid #dfe6ec;border-radius:9px;padding:11px 12px;background:#fff;font:inherit;font-size:12px}
+.company-status{display:flex;align-items:center;gap:12px;font-size:14px}
+.status-active{background:#e6f6ed;color:#278052;border-radius:20px;padding:6px 12px;font-size:11px}
+.company-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 22px}
+.company-metrics>div{background:#f7f9fb;border:1px solid #edf0f3;border-radius:10px;padding:13px}
+.company-metrics small,.company-metrics b{display:block}
+.company-metrics small{color:#8b97a5;font-size:10px;margin-bottom:5px}
+.company-metrics b{font-size:13px}
+.product-form{display:grid;gap:13px;background:#fafbfd;border:1px solid #e5ebf0;border-radius:12px;padding:16px;margin:16px 0}
+.product-form .panel-head{margin:0}
+.product-form textarea{resize:vertical}
+.form-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.company-products-head{display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px}
+.company-products-head h4{margin:0;font-size:14px}
+.company-product-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #edf0f3}
+.product-thumb{width:42px;height:42px;display:grid;place-items:center;background:#f0f4e8;border-radius:9px;color:#778d39;font-size:19px}
+.company-product-main{flex:1;min-width:0}
+.company-product-main b,.company-product-main small,.company-product-main strong{display:block}
+.company-product-main b{font-size:13px}
+.company-product-main small{font-size:10px;color:#8b97a5;margin:4px 0}
+.company-product-main strong{font-size:12px}
+.danger-outline{color:#a44444}
+@media(max-width:620px){.company-selector{align-items:stretch;flex-direction:column}.company-status{justify-content:space-between}.company-metrics{grid-template-columns:1fr 1fr}.form-pair{grid-template-columns:1fr}.company-product-row{flex-wrap:wrap}.company-product-main{min-width:55%}}
