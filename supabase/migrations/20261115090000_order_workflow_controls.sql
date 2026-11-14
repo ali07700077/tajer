@@ -26,7 +26,7 @@ create or replace function public.transition_order_status(
  p_order_id uuid,p_next_status text,p_reason text default null
 ) returns public.orders
 language plpgsql security definer set search_path='' as $$
-declare v_order public.orders%rowtype; v_action text;
+declare v_order public.orders%rowtype; v_action text; v_previous_status text;
 begin
  if auth.uid() is null then raise exception 'يجب تسجيل الدخول' using errcode='28000'; end if;
  select * into v_order from public.orders where id=p_order_id for update;
@@ -34,6 +34,7 @@ begin
  if not public.has_business_role(v_order.supplier_business_id,array['owner'::public.member_role,'manager'::public.member_role]) then
    raise exception 'لا تملك صلاحية إدارة طلب المورد' using errcode='42501';
  end if;
+ v_previous_status:=v_order.status;
  if p_next_status not in ('confirmed','cancelled','processing','shipped','delivered') then
    raise exception 'حالة الطلب المطلوبة غير مسموحة' using errcode='22023';
  end if;
@@ -47,7 +48,7 @@ begin
  where id=p_order_id returning * into v_order;
  v_action:=case p_next_status when 'confirmed' then 'approved' when 'cancelled' then 'rejected' else p_next_status end;
  insert into public.order_workflow_events(order_id,actor_id,action,reason,metadata)
- values(p_order_id,auth.uid(),v_action,nullif(trim(coalesce(p_reason,'')),''),jsonb_build_object('from',v_order.status,'to',p_next_status));
+ values(p_order_id,auth.uid(),v_action,nullif(trim(coalesce(p_reason,'')),''),jsonb_build_object('from',v_previous_status,'to',p_next_status));
  return v_order;
 end;
 $$;
