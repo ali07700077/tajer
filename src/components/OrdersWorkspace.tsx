@@ -35,12 +35,12 @@ export default function OrdersWorkspace({businessId,onOpenRfq,onReorder}:{busine
  useEffect(()=>{void load();},[load]);
  const filtered=useMemo(()=>orders.filter(o=>filter==="all"||o.status===filter),[orders,filter]);
  const warehouseStats=useMemo(()=>({count:warehouses.length,units:stocks.reduce((n,s)=>n+Number(s.on_hand_quantity),0),available:stocks.reduce((n,s)=>n+Number(s.available_quantity),0)}),[warehouses,stocks]);
- async function transition(order:Order,status:"confirmed"|"cancelled"){
-  if(!supabase)return;
+ async function transition(order:Order,status:"confirmed"|"cancelled"|"processing"|"shipped"){
+  if(!supabase)return; const db=supabase as any;
   const reason=status==="cancelled"?window.prompt("اكتب سبب رفض الطلب (إلزامي):"):null;
   if(status==="cancelled"&&(!reason||reason.trim().length<4)){setMessage("لم يتم الرفض: يجب إدخال سبب واضح من أربعة أحرف على الأقل.");return;}
   setBusy(order.id);setMessage("");
-  try{const {error}=await db.rpc("transition_order_status",{p_order_id:order.id,p_next_status:status,p_reason:reason});if(error)throw error;setMessage(status==="confirmed"?"تم اعتماد الطلب وتسجيل العملية.":"تم رفض الطلب وتوثيق السبب.");await load();}
+  try{const {error}=await db.rpc("transition_order_status",{p_order_id:order.id,p_next_status:status,p_reason:reason});if(error)throw error;setMessage(({confirmed:"تم اعتماد الطلب وتسجيل العملية.",cancelled:"تم رفض الطلب وتوثيق السبب.",processing:"بدأ تجهيز الطلب.",shipped:"تم تسجيل شحن الطلب."})[status]);await load();}
   catch(e){setMessage(e instanceof Error?e.message:"تعذر تنفيذ الإجراء.");}finally{setBusy(null);}
  }
  async function changeQuantity(order:Order,item:OrderItem){
