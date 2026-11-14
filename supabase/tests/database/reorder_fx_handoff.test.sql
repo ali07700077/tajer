@@ -1,0 +1,11 @@
+begin;
+select plan(7);
+select has_table('public','fx_rate_snapshots','FX quote snapshots exist');
+select has_column('public','orders','fx_rate_snapshot_id','orders retain the immutable FX quote id');
+select has_column('public','orders','fx_rate_iqd_per_usd','orders retain the exact FX rate');
+select has_column('public','orders','total_amount_usd','orders retain the converted USD amount');
+select has_function('public','reorder_order',array['uuid'],'reorder RPC exists');
+select has_function('public','apply_order_fx_snapshot',array['uuid'],'FX snapshot RPC exists');
+select has_function('public','verify_order_handoff_code',array['uuid','text'],'handoff verification RPC exists');
+select * from finish();
+rollback;
