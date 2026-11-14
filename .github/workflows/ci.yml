@@ -55,15 +55,12 @@ jobs:
       - name: Supabase Docker and port preflight
         run: bash scripts/ci/supabase-preflight.sh
 
-      - name: Start isolated local Supabase
+      - name: Start isolated local Supabase and reset database (debug logs)
+        shell: bash
         run: |
-          if ! supabase start --exclude studio,imgproxy > /tmp/supabase-start.log 2>&1; then
-            echo "::group::Supabase startup log"
-            cat /tmp/supabase-start.log || true
-            echo "::endgroup::"
-            exit 1
-          fi
-          supabase db reset
+          set -euo pipefail
+          supabase start --exclude studio,imgproxy --debug
+          supabase db reset --debug
 
       - name: Wait for Supabase health and export local credentials
         shell: bash
