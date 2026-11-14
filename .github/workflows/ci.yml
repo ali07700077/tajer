@@ -106,19 +106,6 @@ jobs:
           } >> "$GITHUB_ENV"
           echo "Supabase API and Auth are healthy; local credentials exported."
 
-      - name: Wait for Supabase API health
-        run: |
-          for attempt in $(seq 1 60); do
-            if curl --silent --show-error --fail --max-time 5 "$SUPABASE_URL/auth/v1/health" >/dev/null; then
-              echo "Supabase Auth API is healthy."
-              exit 0
-            fi
-            echo "Waiting for Supabase API (attempt $attempt/60)..."
-            sleep 2
-          done
-          echo "Supabase API did not become healthy in time."
-          exit 1
-
       - name: Run database unit and RLS tests
         run: supabase test db
 
