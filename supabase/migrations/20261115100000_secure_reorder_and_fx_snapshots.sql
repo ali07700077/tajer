@@ -18,6 +18,7 @@ create index if not exists fx_rate_snapshots_current_idx
 alter table public.fx_rate_snapshots enable row level security;
 revoke all on public.fx_rate_snapshots from anon,authenticated;
 grant select on public.fx_rate_snapshots to authenticated;
+grant insert on public.fx_rate_snapshots to service_role;
 create policy fx_rate_snapshots_read_current on public.fx_rate_snapshots
 for select to authenticated using (effective_at<=now() and expires_at>now());
 
@@ -69,6 +70,10 @@ begin
 end; $$;
 revoke all on function public.apply_order_fx_snapshot(uuid) from public,anon;
 grant execute on function public.apply_order_fx_snapshot(uuid) to authenticated;
+
+alter table public.order_workflow_events drop constraint if exists order_workflow_events_action_check;
+alter table public.order_workflow_events add constraint order_workflow_events_action_check
+ check(action in ('approved','rejected','processing','shipped','delivered','quantity_changed','handoff_code_issued','reorder_created'));
 
 create or replace function public.reorder_order(p_source_order_id uuid)
 returns jsonb
@@ -131,7 +136,7 @@ begin
  end if;
  update public.orders set total_amount=v_total,updated_at=now() where id=v_new_order_id;
  insert into public.order_workflow_events(order_id,actor_id,action,reason,metadata)
- values(v_new_order_id,auth.uid(),'approved','reorder_created',jsonb_build_object('source_order_id',p_source_order_id,'reservation_minutes',15));
+ values(v_new_order_id,auth.uid(),'reorder_created','تم إنشاء إعادة الطلب مع حجز المخزون',jsonb_build_object('source_order_id',p_source_order_id,'reservation_minutes',15));
  return jsonb_build_object('order_id',v_new_order_id,'status','pending','total_amount_iqd',v_total,'reservation_expires_at',now()+interval '15 minutes');
 end; $$;
 revoke all on function public.reorder_order(uuid) from public,anon;
