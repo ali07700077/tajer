@@ -127,7 +127,7 @@ export default function App() {
         {section === "company" && <CompanyDashboard />}
         {section === "tracking" && <LiveTrackingMap />}
         {section === "orders" && <OrdersWorkspace businessId={activeBusinessId} onOpenRfq={() => setSection("rfqs")} onReorder={() => { setSection("products"); setNotice("اختر المنتجات والكميات لإنشاء طلب جديد؛ إعادة إنشاء الطلب السابق آلياً ستضاف بعد ربط دورة الطلب بالمخزون والحجوزات."); }} />}
-        {section === "suppliers" && <Empty title="بوابة الموردين" desc="سيتمكن المورد من إنشاء ملف شركته وإضافة المنتجات وإدارة عروض الأسعار." action={() => setNotice("تسجيل الموردين قيد التنفيذ ضمن المرحلة التالية.")} />}
+        {section === "suppliers" && <DemoSuppliers onBrowse={() => setSection("products")} />}
         <footer>© 2026 تاجر · منصة التجارة بالجملة في العراق <span>كتالوج العرض تجريبي — لا يمثل عروضاً أو مخزوناً مؤكداً</span></footer>
       </div>
     </main>
@@ -148,11 +148,13 @@ function DemoSuppliers({ onBrowse }: { onBrowse: () => void }) {
       if(alive&&!error){
         const grouped=new Map<string,{supplier_name:string;governorate_name:string;count:number}>();
         for(const row of data??[]){
-          const key=row.supplier_name;
-          const item=grouped.get(key)??{supplier_name:row.supplier_name,governorate_name:row.governorate_name,count:0};
+          const supplierName = row.supplier_name ?? "";
+          const governorateName = row.governorate_name ?? "";
+          const key = supplierName;
+          const item=grouped.get(key)??{supplier_name:supplierName,governorate_name:governorateName,count:0};
           item.count++;grouped.set(key,item);
         }
-        setRows(Array.from(grouped.values()).sort((a,b)=>a.governorate_name.localeCompare(b.governorate_name,"ar")));
+        setRows(Array.from(grouped.values()).sort((a,b)=>(a.governorate_name ?? "").localeCompare(b.governorate_name ?? "", "ar")));
       }
       if(alive)setLoading(false);
     }
