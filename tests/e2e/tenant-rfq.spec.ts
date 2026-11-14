@@ -308,6 +308,11 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
       .from("group_buy_participants").select("quantity").eq("id",participantId).single();
     expect(participantReadError).toBeNull();
     expect(participantVisible?.quantity).toBe(4);
+    const { data: participantAudit, error: participantAuditError } = await admin
+      .from("audit_logs").select("action,entity_type,entity_id")
+      .eq("entity_type","group_buy_participants").eq("entity_id",participantId).single();
+    expect(participantAuditError).toBeNull();
+    expect(participantAudit?.action).toBe("insert");
     const { data: participantHidden, error: participantHiddenError } = await supplierB.client
       .from("group_buy_participants").select("id").eq("id",participantId);
     expect(participantHiddenError).toBeNull();
