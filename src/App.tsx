@@ -148,11 +148,13 @@ function DemoSuppliers({ onBrowse }: { onBrowse: () => void }) {
       if(alive&&!error){
         const grouped=new Map<string,{supplier_name:string;governorate_name:string;count:number}>();
         for(const row of data??[]){
-          const key=row.supplier_name;
-          const item=grouped.get(key)??{supplier_name:row.supplier_name,governorate_name:row.governorate_name,count:0};
+          const supplierName = row.supplier_name ?? "";
+          const governorateName = row.governorate_name ?? "";
+          const key = supplierName;
+          const item=grouped.get(key)??{supplier_name:supplierName,governorate_name:governorateName,count:0};
           item.count++;grouped.set(key,item);
         }
-        setRows(Array.from(grouped.values()).sort((a,b)=>a.governorate_name.localeCompare(b.governorate_name,"ar")));
+        setRows(Array.from(grouped.values()).sort((a,b)=>(a.governorate_name ?? "").localeCompare(b.governorate_name ?? "", "ar")));
       }
       if(alive)setLoading(false);
     }
