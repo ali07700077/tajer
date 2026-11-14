@@ -3,7 +3,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(31);
+select plan(35);
 
 insert into auth.users
   (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
@@ -197,6 +197,29 @@ select throws_ok($$insert into public.product_price_tiers(product_id,min_quantit
 select throws_ok($$update public.products set min_order_quantity=25 where id='20000000-0000-4000-8000-000000000003'$$,'P0001','تغيير الحد الأدنى سيجعل شرائح الأسعار الحالية غير صالحة','raising MOQ cannot invalidate existing wholesale tiers');
 select throws_ok($$update public.products set price=7500 where id='20000000-0000-4000-8000-000000000003'$$,'P0001','تغيير سعر الجملة الأساسي سيجعل شرائح الأسعار الحالية غير صالحة','lowering the base wholesale price cannot invalidate existing tiers');
 select ok((select relrowsecurity from pg_class where oid='public.product_price_tiers'::regclass) and has_table_privilege('authenticated','public.product_price_tiers','SELECT') and has_table_privilege('authenticated','public.product_price_tiers','INSERT'),'wholesale tiers remain protected by RLS while authenticated clients use supplier policies');
+
+
+-- Unified hybrid checkout parent/child linkage and execution boundary.
+select ok(
+  to_regclass('public.checkout_sessions') is not null,
+  'unified checkout parent sessions are stored in the database'
+);
+select ok(
+  (select relrowsecurity from pg_class where oid='public.checkout_sessions'::regclass),
+  'checkout sessions enforce row level security'
+);
+select ok(
+  has_function_privilege('authenticated','public.create_hybrid_checkout(uuid,jsonb,jsonb,text)','EXECUTE')
+  and not has_function_privilege('anon','public.create_hybrid_checkout(uuid,jsonb,jsonb,text)','EXECUTE'),
+  'only authenticated users can invoke the atomic hybrid checkout RPC'
+);
+select ok(
+  exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='orders' and column_name='checkout_session_id'
+  ),
+  'supplier orders can be linked to one parent checkout session'
+);
 
 select * from finish();
 rollback;
