@@ -156,7 +156,7 @@ def create_branch_and_pr(patch: str, report: str) -> str:
     if not changed:
         raise RuntimeError("Claude patch made no repository changes.")
     patch_paths = sorted({
-        path for path in re.findall(r"^\\+\\+\\+ b/(.+)$", patch, re.M)
+        path for path in re.findall(r"^\+\+\+ b/(.+)$", patch, re.M)
         if allowed_path(path)
     })
     if not patch_paths:
