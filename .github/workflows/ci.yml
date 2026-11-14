@@ -53,7 +53,18 @@ jobs:
 
       - name: Start isolated local Supabase
         run: |
-          supabase start > /tmp/supabase-start.log 2>&1 || { echo "Supabase local stack failed to start; see action runner diagnostics."; exit 1; }
+          if ! supabase start > /tmp/supabase-start.log 2>&1; then
+            echo "::group::Supabase startup log"
+            cat /tmp/supabase-start.log || true
+            echo "::endgroup::"
+            echo "::group::Docker diagnostics"
+            docker version || true
+            docker info || true
+            docker ps -a || true
+            df -h || true
+            echo "::endgroup::"
+            exit 1
+          fi
           supabase db reset
           supabase status -o json > /tmp/supabase-status.json
           node <<'NODE'
