@@ -9,6 +9,7 @@ import RetailCatalog from "./components/RetailCatalog";
 import WholesaleCheckout from "./components/WholesaleCheckout";
 import HybridCheckout from "./components/HybridCheckout";
 import CommercialHub from "./components/CommercialHub";
+import RoleSwitcher, { type AppRole } from "./components/RoleSwitcher";
 
 type Section = "overview" | "products" | "retail" | "wholesale" | "hybrid" | "commercial" | "rfqs" | "orders" | "suppliers" | "businesses" | "company";
 type Product = { id: string; name: string; category: string; price: number; min: number; stock: string; color: string; initials: string; };
@@ -30,6 +31,8 @@ type CartLine = { product: Product; quantity: number };
 
 export default function App() {
   const [section, setSection] = useState<Section>("overview");
+  const [activeRole, setActiveRole] = useState<AppRole>("retail_buyer");
+  const [activeBusinessId, setActiveBusinessId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -76,7 +79,16 @@ export default function App() {
       setNotice(error instanceof Error ? error.message : "تعذر تسجيل الدخول.");
     } finally { setAuthBusy(false); }
   }
-  return <div className="app-shell" dir="rtl">
+  function handleRoleChange(role: AppRole, businessId: string | null) {
+    setActiveRole(role);
+    setActiveBusinessId(businessId);
+    if (role === "retail_buyer") setSection("retail");
+    else if (role === "wholesale_buyer") setSection("wholesale");
+    else if (role === "supplier") setSection("company");
+    else setSection("commercial");
+  }
+
+  return <div className="app-shell" dir="rtl" data-active-role={activeRole} data-active-business={activeBusinessId ?? ""}>
     <aside className="sidebar">
       <div className="brand"><div className="brand-mark">ت</div><div><b>تاجر</b><small>سوق الجملة العراقي</small></div></div>
       <div className="workspace-label">مساحة العمل</div>
@@ -84,7 +96,7 @@ export default function App() {
       <div className="sidebar-bottom"><div className="help-card"><span>هل تحتاج إلى مساعدة؟</span><small>منصة تربط التجار بالموردين</small><button onClick={() => setNotice("سيتم تفعيل مركز المساعدة في مرحلة لاحقة.")}>مركز المساعدة ←</button></div><div className="profile"><div className="avatar">ت</div><div><b>زائر المنصة</b><small>تصفح الكتالوج</small></div><span className="dots">•••</span></div></div>
     </aside>
     <main className="main">
-      <header className="topbar"><div className="crumb">تاجر <span>/</span> {title}</div><div className="top-actions"><span className={isSupabaseConfigured ? "connection on" : "connection"}><i/> {isSupabaseConfigured ? "إعداد الاتصال متوفر" : "وضع العرض الأولي"}</span><button className="icon-btn" onClick={() => setSection("wholesale")}>السلة {cartCount ? `(${cartCount})` : ""}</button><button className="user-chip" onClick={() => setShowAuth(v => !v)}>تسجيل الدخول</button></div></header>
+      <header className="topbar"><div className="crumb">تاجر <span>/</span> {title}</div><RoleSwitcher onRoleChange={handleRoleChange} /><div className="top-actions"><span className={isSupabaseConfigured ? "connection on" : "connection"}><i/> {isSupabaseConfigured ? "إعداد الاتصال متوفر" : "وضع العرض الأولي"}</span><button className="icon-btn" onClick={() => setSection("wholesale")}>السلة {cartCount ? `(${cartCount})` : ""}</button><button className="user-chip" onClick={() => setShowAuth(v => !v)}>تسجيل الدخول</button></div></header>
       <div className="content">
         <div className="welcome-row"><div><div className="eyebrow">سوق هجين للجملة والمفرد B2B + B2C · العراق</div><h1>{section === "overview" ? "سوق الجملة، أقرب إليك" : title}</h1><p>اكتشف الموردين، اشترِ بالمفرد أو بالجملة، وأرسل طلبات الأسعار من مكان واحد.</p></div><button className="primary" onClick={() => setSection("products")}>تصفح المنتجات ←</button></div>
         {notice && <div className="notice"><span>ⓘ</span><p>{notice}</p><button onClick={() => setNotice("")}>×</button></div>}
