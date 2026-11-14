@@ -339,3 +339,28 @@ create trigger consolidated_shipment_orders_audit after insert or update or dele
 for each row execute function public.audit_commercial_change();
 
 revoke all on function public.audit_commercial_change() from public,anon,authenticated;
+
+-- Normalize persisted monetary values and fractional quantities to the platform precision.
+alter table public.products
+  alter column price type numeric(19,4) using price::numeric(19,4),
+  alter column retail_price type numeric(19,4) using retail_price::numeric(19,4),
+  alter column sample_price type numeric(19,4) using sample_price::numeric(19,4);
+alter table public.product_price_tiers
+  alter column unit_price type numeric(19,4) using unit_price::numeric(19,4);
+alter table public.rfq_offers
+  alter column unit_price type numeric(19,4) using unit_price::numeric(19,4),
+  alter column total_price type numeric(19,4) using total_price::numeric(19,4),
+  alter column quantity type numeric(19,4) using quantity::numeric(19,4);
+alter table public.orders
+  alter column total_amount type numeric(19,4) using total_amount::numeric(19,4);
+alter table public.order_items
+  alter column quantity type numeric(19,4) using quantity::numeric(19,4),
+  alter column unit_price type numeric(19,4) using unit_price::numeric(19,4);
+alter table public.product_sample_requests
+  alter column unit_price type numeric(19,4) using unit_price::numeric(19,4);
+alter table public.proforma_invoices
+  alter column subtotal type numeric(19,4) using subtotal::numeric(19,4);
+alter table public.proforma_invoice_items
+  alter column quantity type numeric(19,4) using quantity::numeric(19,4),
+  alter column unit_price type numeric(19,4) using unit_price::numeric(19,4);
+
