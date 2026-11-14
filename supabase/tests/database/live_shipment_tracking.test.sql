@@ -1,0 +1,13 @@
+begin;
+select plan(9);
+select has_table('public','shipment_tracking_events','GPS tracking event table exists');
+select has_column('public','consolidated_shipments','assigned_driver_id','shipments support assigned drivers');
+select has_column('public','consolidated_shipments','last_latitude','shipments retain last GPS latitude');
+select has_column('public','consolidated_shipments','last_longitude','shipments retain last GPS longitude');
+select has_column('public','consolidated_shipments','estimated_delivery_at','shipments retain ETA');
+select has_function('public','record_shipment_location',array['uuid','numeric','numeric','numeric','numeric','numeric','integer'],'authorized GPS update RPC exists');
+select has_function('public','can_view_shipment',array['uuid'],'shipment participant visibility helper exists');
+select has_function('public','verify_shipment_handoff_code',array['uuid','uuid','text'],'shipment handoff finalization RPC exists');
+select ok(exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='shipment_tracking_events'),'tracking events are published to Supabase Realtime');
+select * from finish();
+rollback;
