@@ -10,7 +10,7 @@ test("Arabic live logistics workspace renders Iraq map and tracking controls", a
   await expect(workspace.getByRole("combobox", { name: "اختيار الشحنة" })).toBeVisible();
   await expect(workspace.getByRole("button", { name: "تحديث موقعي الحالي (GPS)" })).toBeDisabled();
   await expect(workspace.getByRole("button", { name: "تحقق وأكد التسليم" })).toBeDisabled();
-  await expect(workspace.getByLabel("خريطة العراق والشحنات")).toBeVisible();
+  await expect(workspace.getByRole("img", { name: "خريطة العراق والشحنات" })).toBeVisible();
 });
 
 test("shipment tracking exposes a manual OTP fallback for delivery confirmation", async ({ page }) => {
