@@ -11,8 +11,9 @@ import HybridCheckout from "./components/HybridCheckout";
 import CommercialHub from "./components/CommercialHub";
 import RoleSwitcher, { type AppRole } from "./components/RoleSwitcher";
 import OrdersWorkspace from "./components/OrdersWorkspace";
+import LiveTrackingMap from "./components/LiveTrackingMap";
 
-type Section = "overview" | "products" | "retail" | "wholesale" | "hybrid" | "commercial" | "rfqs" | "orders" | "suppliers" | "businesses" | "company";
+type Section = "overview" | "products" | "retail" | "wholesale" | "hybrid" | "commercial" | "rfqs" | "orders" | "tracking" | "suppliers" | "businesses" | "company";
 type Product = { id: string; name: string; category: string; price: number; min: number; stock: string; color: string; initials: string; };
 const nav: { id: Section; label: string; icon: string }[] = [
   { id: "overview", label: "الرئيسية", icon: "⌂" },
@@ -23,6 +24,7 @@ const nav: { id: Section; label: string; icon: string }[] = [
   { id: "commercial", label: "الخدمات التجارية", icon: "🏦" },
   { id: "rfqs", label: "طلبات عروض الأسعار", icon: "▤" },
   { id: "orders", label: "الطلبات", icon: "▣" },
+  { id: "tracking", label: "تتبع الشحنات", icon: "⌖" },
   { id: "suppliers", label: "الموردون", icon: "♧" },
   { id: "businesses", label: "شركاتي والحساب", icon: "◉" },
   { id: "company", label: "لوحة الشركة", icon: "▣" },
@@ -123,6 +125,7 @@ export default function App() {
         {section === "rfqs" && <RfqWorkspace mode="dashboard" />}
         {section === "businesses" && <AccountCenter />}
         {section === "company" && <CompanyDashboard />}
+        {section === "tracking" && <LiveTrackingMap />}
         {section === "orders" && <OrdersWorkspace businessId={activeBusinessId} onOpenRfq={() => setSection("rfqs")} onReorder={() => { setSection("products"); setNotice("اختر المنتجات والكميات لإنشاء طلب جديد؛ إعادة إنشاء الطلب السابق آلياً ستضاف بعد ربط دورة الطلب بالمخزون والحجوزات."); }} />}
         {section === "suppliers" && <Empty title="بوابة الموردين" desc="سيتمكن المورد من إنشاء ملف شركته وإضافة المنتجات وإدارة عروض الأسعار." action={() => setNotice("تسجيل الموردين قيد التنفيذ ضمن المرحلة التالية.")} />}
         <footer>© 2026 تاجر · منصة التجارة بالجملة في العراق <span>نسخة تطوير أولية</span></footer>
