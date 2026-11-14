@@ -72,9 +72,9 @@ export default function OrdersWorkspace({businessId,onOpenRfq,onReorder}:{busine
     {o.order_items?.map(item=><div className="wms-order-line" key={item.id}><span>{item.product_name}<small>{item.quantity} × {formatMoney(Number(item.unit_price),o.currency)}</small></span>{o.status==="pending"&&<button className="text-btn" disabled={busy===o.id} onClick={()=>void changeQuantity(o,item)}>تعديل الكمية</button>}</div>)}
     <div className="wms-actions">
      {o.status==="pending"&&<><button className="primary" disabled={busy===o.id} onClick={()=>void transition(o,"confirmed")}>✓ اعتماد فوري</button><button className="danger-outline outline" disabled={busy===o.id} onClick={()=>void transition(o,"cancelled")}>رفض مع سبب</button></>}
-     <button className="outline" onClick={onOpenRfq}>طلب عرض سعر RFQ</button>
+     {o.status==="confirmed"&&<button className="outline" disabled={busy===o.id} onClick={()=>void transition(o,"processing")}>بدء التجهيز</button>}{o.status==="processing"&&<button className="outline" disabled={busy===o.id} onClick={()=>void transition(o,"shipped")}>تسجيل الشحن</button>}<button className="outline" onClick={onOpenRfq}>طلب عرض سعر RFQ</button>
      <button className="outline" onClick={onReorder}>إعادة الطلب</button>
-     {(o.status==="processing"||o.status==="shipped")&&<button className="outline" disabled={busy===o.id} onClick={()=>void issueCode(o)}>إصدار QR / OTP</button>}
+     {(o.status==="processing"||o.status==="shipped")&&<button className="outline" disabled={busy===o.id} onClick={()=>void issueCode(o)}>إصدار OTP للتسليم</button>}
     </div>
    </article>)}
   </div>
