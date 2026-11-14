@@ -1,4 +1,5 @@
--- Private supplier eligibility helper is used internally by RLS and RPC routines.
--- It must not be directly callable by anonymous API clients.
-revoke execute on function private.is_approved_supplier(uuid) from public, anon;
-grant execute on function private.is_approved_supplier(uuid) to authenticated;
+-- The helper backs the public approved-supplier product visibility policy.
+-- It returns only a boolean and is safe for anonymous catalog reads; all other
+-- private RFQ helpers remain restricted to authenticated callers.
+revoke execute on function private.is_approved_supplier(uuid) from public;
+grant execute on function private.is_approved_supplier(uuid) to anon, authenticated;

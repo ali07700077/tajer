@@ -73,3 +73,15 @@ drop policy if exists supply_contracts_supplier_accept on public.supply_contract
 create policy supply_contracts_supplier_accept on public.supply_contracts for update to authenticated
 using (status='pending_supplier' and public.has_business_role(supplier_business_id,array['owner'::public.member_role,'manager'::public.member_role]))
 with check (status in ('active','pending_supplier') and public.has_business_role(supplier_business_id,array['owner'::public.member_role,'manager'::public.member_role]) and supplier_accepted_by=auth.uid() and supplier_accepted_at is not null);
+
+-- Explicit Data API grants. RLS above remains the row-level authorization boundary.
+revoke all on table public.ai_conversations from public, anon, authenticated;
+grant select, insert, update on table public.ai_conversations to authenticated;
+
+revoke all on table public.ai_messages from public, anon, authenticated;
+grant select, insert on table public.ai_messages to authenticated;
+
+revoke all on table public.supply_contracts from public, anon, authenticated;
+grant select, insert on table public.supply_contracts to authenticated;
+grant update (status, supplier_accepted_by, supplier_accepted_at)
+  on table public.supply_contracts to authenticated;

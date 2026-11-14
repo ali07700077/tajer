@@ -82,3 +82,8 @@
 .rfq-offer button{white-space:nowrap}
 .rfq-request-actions{display:flex;justify-content:flex-start;margin-top:12px}
 @media(max-width:620px){.rfq-offer{flex-wrap:wrap}.rfq-offer>div{flex-basis:55%}.rfq-offer strong{margin-right:auto}.rfq-request-head{flex-direction:column}.rfq-modal{padding:14px}}
+
+/* Hybrid B2B/B2C catalog */
+.retail-intro{display:flex;justify-content:space-between;align-items:center;gap:18px;background:#fff;border:1px solid #e8edf2;border-radius:13px;padding:20px;margin:18px 0}
+.retail-intro h2{margin:5px 0;font-size:22px}.retail-intro p{margin:0;color:#8492a1;font-size:12px}.retail-cart-summary{min-width:150px;display:grid;gap:4px;background:#f1f5e6;border-radius:10px;padding:13px}.retail-cart-summary b,.retail-cart-summary span{font-size:11px;color:#71833a}.retail-cart-summary strong{font-size:18px}.retail-search{width:100%;margin-bottom:16px}.retail-toggle{display:flex!important;align-items:center;gap:9px}.retail-toggle input{width:auto!important}.retail-checkout-note{display:grid;gap:5px;background:#fff8e8;border:1px solid #f0e2bd;border-radius:10px;padding:14px;margin-top:18px;font-size:12px}.retail-checkout-note span{color:#8b7444;line-height:1.7}
+@media(max-width:620px){.retail-intro{align-items:stretch;flex-direction:column}.retail-cart-summary{min-width:0}}

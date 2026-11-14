@@ -25,6 +25,34 @@ create table if not exists public.cities (
  name_ar text not null, name_en text, is_active boolean not null default true, sort_order integer not null default 0,
  created_at timestamptz not null default now(), updated_at timestamptz not null default now(), unique(governorate_id,name_ar)
 );
+
+-- Iraq's 19 governorates (Halabja was legally established as the 19th in 2025).
+insert into public.governorates (code, name_ar, name_en, is_active, sort_order)
+values
+ ('baghdad','بغداد','Baghdad',true,1),
+ ('basra','البصرة','Basra',true,2),
+ ('nineveh','نينوى','Nineveh',true,3),
+ ('erbil','أربيل','Erbil',true,4),
+ ('sulaymaniyah','السليمانية','Sulaymaniyah',true,5),
+ ('duhok','دهوك','Duhok',true,6),
+ ('halabja','حلبجة','Halabja',true,7),
+ ('kirkuk','كركوك','Kirkuk',true,8),
+ ('diyala','ديالى','Diyala',true,9),
+ ('saladin','صلاح الدين','Saladin',true,10),
+ ('anbar','الأنبار','Al-Anbar',true,11),
+ ('babylon','بابل','Babylon',true,12),
+ ('karbala','كربلاء','Karbala',true,13),
+ ('najaf','النجف','Najaf',true,14),
+ ('wasit','واسط','Wasit',true,15),
+ ('maysan','ميسان','Maysan',true,16),
+ ('dhi-qar','ذي قار','Dhi Qar',true,17),
+ ('muthanna','المثنى','Muthanna',true,18),
+ ('qadisiyyah','القادسية','Qadisiyyah',true,19)
+on conflict (code) do update set
+ name_ar=excluded.name_ar,
+ name_en=excluded.name_en,
+ is_active=true,
+ sort_order=excluded.sort_order;
 create table if not exists public.businesses (
  id uuid primary key default gen_random_uuid(), business_type public.business_type not null, name_ar text not null check(char_length(trim(name_ar)) between 2 and 160),
  name_en text check(name_en is null or char_length(name_en)<=160), legal_name text, commercial_registration_no text, tax_id text,

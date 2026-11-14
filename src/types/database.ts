@@ -187,6 +187,38 @@ export type Database = {
           },
         ]
       }
+      checkout_sessions: {
+        Row: {
+          id: string
+          buyer_user_id: string
+          buyer_business_id: string | null
+          delivery_address: string
+          status: string
+          total_amount: number
+          currency: string
+          expires_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          buyer_user_id: string
+          buyer_business_id?: string | null
+          delivery_address: string
+          status?: string
+          total_amount?: number
+          currency?: string
+          expires_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -364,7 +396,10 @@ export type Database = {
       }
       orders: {
         Row: {
-          buyer_business_id: string
+          buyer_business_id: string | null
+          buyer_user_id: string | null
+          order_type: string
+          checkout_session_id: string | null
           created_at: string
           currency: string
           delivery_address: string | null
@@ -377,7 +412,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          buyer_business_id: string
+          buyer_business_id?: string | null
+          buyer_user_id?: string | null
+          order_type?: string
+          checkout_session_id?: string | null
           created_at?: string
           currency?: string
           delivery_address?: string | null
@@ -390,7 +428,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          buyer_business_id?: string
+          buyer_business_id?: string | null
+          buyer_user_id?: string | null
+          order_type?: string
+          checkout_session_id?: string | null
           created_at?: string
           currency?: string
           delivery_address?: string | null
@@ -426,6 +467,18 @@ export type Database = {
           },
         ]
       }
+      inventory_reservations: {
+        Row: { id: string; order_id: string; product_id: string; supplier_business_id: string; quantity: number; status: string; expires_at: string; created_at: string; resolved_at: string | null }
+        Insert: { id?: string; order_id: string; product_id: string; supplier_business_id: string; quantity: number; status?: string; expires_at: string; created_at?: string; resolved_at?: string | null }
+        Update: { id?: string; order_id?: string; product_id?: string; supplier_business_id?: string; quantity?: number; status?: string; expires_at?: string; created_at?: string; resolved_at?: string | null }
+        Relationships: []
+      }
+      escrow_ledger_entries: {
+        Row: { id: string; order_id: string; entry_type: string; amount: number; currency: string; provider_reference: string | null; idempotency_key: string; metadata: Json; actor_id: string | null; created_at: string }
+        Insert: { id?: string; order_id: string; entry_type: string; amount: number; currency?: string; provider_reference?: string | null; idempotency_key: string; metadata?: Json; actor_id?: string | null; created_at?: string }
+        Update: { id?: string; order_id?: string; entry_type?: string; amount?: number; currency?: string; provider_reference?: string | null; idempotency_key?: string; metadata?: Json; actor_id?: string | null; created_at?: string }
+        Relationships: []
+      }
       permissions: {
         Row: {
           group_key: string
@@ -442,6 +495,24 @@ export type Database = {
           key?: string
           name_ar?: string
         }
+        Relationships: []
+      }
+      product_sample_requests: {
+        Row: { id: string; product_id: string; buyer_business_id: string; supplier_business_id: string; requested_by: string; quantity: number; unit_price: number; total_amount: number; status: string; delivery_address: string; created_at: string; updated_at: string }
+        Insert: { id?: string; product_id: string; buyer_business_id: string; supplier_business_id: string; requested_by: string; quantity: number; unit_price: number; status?: string; delivery_address: string; created_at?: string; updated_at?: string }
+        Update: { status?: string; updated_at?: string }
+        Relationships: []
+      }
+      proforma_invoices: {
+        Row: { id: string; invoice_number: string; order_id: string; supplier_business_id: string; buyer_business_id: string; currency: string; subtotal: number; terms: string | null; issued_at: string; valid_until: string | null; status: string; created_by: string; created_at: string }
+        Insert: { id?: string; invoice_number: string; order_id: string; supplier_business_id: string; buyer_business_id: string; currency?: string; subtotal: number; terms?: string | null; issued_at?: string; valid_until?: string | null; status?: string; created_by: string; created_at?: string }
+        Update: { status?: string; valid_until?: string | null; terms?: string | null }
+        Relationships: []
+      }
+      proforma_invoice_items: {
+        Row: { id: string; proforma_invoice_id: string; product_id: string; product_name: string; quantity: number; unit_price: number; line_total: number }
+        Insert: { id?: string; proforma_invoice_id: string; product_id: string; product_name: string; quantity: number; unit_price: number }
+        Update: never
         Relationships: []
       }
       product_price_tiers: {
@@ -488,8 +559,15 @@ export type Database = {
           min_order_quantity: number
           name: string
           price: number
+          retail_price: number | null
+          is_retail_available: boolean
+          sample_available: boolean
+          sample_price: number | null
+          sample_max_quantity: number
           sku: string | null
           stock_quantity: number
+          reserved_quantity: number
+          available_quantity: number
           updated_at: string
         }
         Insert: {
@@ -503,6 +581,11 @@ export type Database = {
           min_order_quantity?: number
           name: string
           price?: number
+          retail_price?: number | null
+          is_retail_available?: boolean
+          sample_available?: boolean
+          sample_price?: number | null
+          sample_max_quantity?: number
           sku?: string | null
           stock_quantity?: number
           updated_at?: string
@@ -518,6 +601,11 @@ export type Database = {
           min_order_quantity?: number
           name?: string
           price?: number
+          retail_price?: number | null
+          is_retail_available?: boolean
+          sample_available?: boolean
+          sample_price?: number | null
+          sample_max_quantity?: number
           sku?: string | null
           stock_quantity?: number
           updated_at?: string
@@ -839,11 +927,78 @@ export type Database = {
           },
         ]
       }
+      group_buy_campaigns: {
+        Row: { id: string; supplier_business_id: string; product_id: string; title_ar: string; target_quantity: number; max_quantity: number; committed_quantity: number; unit_price: number; currency: string; status: string; starts_at: string; ends_at: string; created_at: string; updated_at: string }
+        Insert: { id?: string; supplier_business_id: string; product_id: string; title_ar: string; target_quantity: number; max_quantity: number; committed_quantity?: number; unit_price: number; currency?: string; status?: string; starts_at?: string; ends_at: string; created_at?: string; updated_at?: string }
+        Update: { title_ar?: string; target_quantity?: number; max_quantity?: number; unit_price?: number; status?: string; starts_at?: string; ends_at?: string; updated_at?: string }
+        Relationships: [{ foreignKeyName: "group_buy_campaigns_supplier_business_id_fkey"; columns: ["supplier_business_id"]; isOneToOne: false; referencedRelation: "businesses"; referencedColumns: ["id"] }, { foreignKeyName: "group_buy_campaigns_product_id_fkey"; columns: ["product_id"]; isOneToOne: false; referencedRelation: "products"; referencedColumns: ["id"] }]
+      }
+      group_buy_participants: {
+        Row: { id: string; campaign_id: string; buyer_business_id: string; joined_by: string; quantity: number; status: string; idempotency_key: string; created_at: string; updated_at: string }
+        Insert: { id?: string; campaign_id: string; buyer_business_id: string; joined_by: string; quantity: number; status?: string; idempotency_key: string; created_at?: string; updated_at?: string }
+        Update: { status?: string; quantity?: number; updated_at?: string }
+        Relationships: [{ foreignKeyName: "group_buy_participants_campaign_id_fkey"; columns: ["campaign_id"]; isOneToOne: false; referencedRelation: "group_buy_campaigns"; referencedColumns: ["id"] }, { foreignKeyName: "group_buy_participants_buyer_business_id_fkey"; columns: ["buyer_business_id"]; isOneToOne: false; referencedRelation: "businesses"; referencedColumns: ["id"] }]
+      }
+      b2b_credit_accounts: {
+        Row: { id: string; buyer_business_id: string; credit_limit: number; outstanding_balance: number; currency: string; status: string; payment_term_days: number; approved_by: string | null; approved_at: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; buyer_business_id: string; credit_limit?: number; outstanding_balance?: number; currency?: string; status?: string; payment_term_days?: number; approved_by?: string | null; approved_at?: string | null; created_at?: string; updated_at?: string }
+        Update: { credit_limit?: number; outstanding_balance?: number; status?: string; payment_term_days?: number; approved_by?: string | null; approved_at?: string | null; updated_at?: string }
+        Relationships: [{ foreignKeyName: "b2b_credit_accounts_buyer_business_id_fkey"; columns: ["buyer_business_id"]; isOneToOne: true; referencedRelation: "businesses"; referencedColumns: ["id"] }]
+      }
+      b2b_credit_transactions: {
+        Row: { id: string; credit_account_id: string; order_id: string | null; transaction_type: string; amount: number; currency: string; idempotency_key: string; due_at: string | null; reference: string | null; metadata: Json; actor_id: string | null; created_at: string }
+        Insert: { id?: string; credit_account_id: string; order_id?: string | null; transaction_type: string; amount: number; currency?: string; idempotency_key: string; due_at?: string | null; reference?: string | null; metadata?: Json; actor_id?: string | null; created_at?: string }
+        Update: never
+        Relationships: [{ foreignKeyName: "b2b_credit_transactions_credit_account_id_fkey"; columns: ["credit_account_id"]; isOneToOne: false; referencedRelation: "b2b_credit_accounts"; referencedColumns: ["id"] }, { foreignKeyName: "b2b_credit_transactions_order_id_fkey"; columns: ["order_id"]; isOneToOne: false; referencedRelation: "orders"; referencedColumns: ["id"] }]
+      }
+      financial_journal_transactions: {
+        Row: { id: string; order_id: string; event_type: string; amount: number; currency: string; idempotency_key: string; provider_reference: string | null; metadata: Json; actor_id: string | null; created_at: string }
+        Insert: { id?: string; order_id: string; event_type: string; amount: number; currency?: string; idempotency_key: string; provider_reference?: string | null; metadata?: Json; actor_id?: string | null; created_at?: string }
+        Update: never
+        Relationships: [{ foreignKeyName: "financial_journal_transactions_order_id_fkey"; columns: ["order_id"]; isOneToOne: false; referencedRelation: "orders"; referencedColumns: ["id"] }]
+      }
+      financial_journal_lines: {
+        Row: { id: string; journal_transaction_id: string; account_code: string; debit: number; credit: number; currency: string; created_at: string }
+        Insert: { id?: string; journal_transaction_id: string; account_code: string; debit?: number; credit?: number; currency?: string; created_at?: string }
+        Update: never
+        Relationships: [{ foreignKeyName: "financial_journal_lines_journal_transaction_id_fkey"; columns: ["journal_transaction_id"]; isOneToOne: false; referencedRelation: "financial_journal_transactions"; referencedColumns: ["id"] }]
+      }
+      consolidated_shipments: {
+        Row: { id: string; buyer_business_id: string; shipment_reference: string; carrier_name: string | null; tracking_reference: string | null; status: string; origin_governorate_id: string | null; destination_governorate_id: string; delivery_address: string; shipping_cost: number; currency: string; estimated_delivery_at: string | null; dispatched_at: string | null; delivered_at: string | null; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; buyer_business_id: string; shipment_reference: string; carrier_name?: string | null; tracking_reference?: string | null; status?: string; origin_governorate_id?: string | null; destination_governorate_id: string; delivery_address: string; shipping_cost?: number; currency?: string; estimated_delivery_at?: string | null; dispatched_at?: string | null; delivered_at?: string | null; created_by: string; created_at?: string; updated_at?: string }
+        Update: { carrier_name?: string | null; tracking_reference?: string | null; status?: string; shipping_cost?: number; estimated_delivery_at?: string | null; dispatched_at?: string | null; delivered_at?: string | null; updated_at?: string }
+        Relationships: [{ foreignKeyName: "consolidated_shipments_buyer_business_id_fkey"; columns: ["buyer_business_id"]; isOneToOne: false; referencedRelation: "businesses"; referencedColumns: ["id"] }, { foreignKeyName: "consolidated_shipments_destination_governorate_id_fkey"; columns: ["destination_governorate_id"]; isOneToOne: false; referencedRelation: "governorates"; referencedColumns: ["id"] }]
+      }
+      consolidated_shipment_orders: {
+        Row: { shipment_id: string; order_id: string; supplier_business_id: string; package_count: number; declared_value: number; created_at: string }
+        Insert: { shipment_id: string; order_id: string; supplier_business_id: string; package_count?: number; declared_value?: number; created_at?: string }
+        Update: never
+        Relationships: [{ foreignKeyName: "consolidated_shipment_orders_shipment_id_fkey"; columns: ["shipment_id"]; isOneToOne: false; referencedRelation: "consolidated_shipments"; referencedColumns: ["id"] }, { foreignKeyName: "consolidated_shipment_orders_order_id_fkey"; columns: ["order_id"]; isOneToOne: true; referencedRelation: "orders"; referencedColumns: ["id"] }]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      join_group_buy: { Args: { p_campaign_id: string; p_buyer_business_id: string; p_quantity: number; p_idempotency_key: string }; Returns: string }
+      post_order_escrow_journal: { Args: { p_order_id: string; p_event_type: string; p_amount: number; p_idempotency_key: string; p_provider_reference?: string | null; p_metadata?: Json }; Returns: string }
+
+      append_escrow_ledger_entry: { Args: { p_order_id: string; p_entry_type: string; p_amount: number; p_idempotency_key: string; p_provider_reference?: string | null; p_metadata?: Json }; Returns: string }
+      confirm_inventory_reservation: { Args: { p_order_id: string }; Returns: number }
+      release_expired_inventory_reservations: { Args: { p_limit?: number }; Returns: number }
+      create_hybrid_checkout: {
+        Args: {
+          p_buyer_business_id: string | null
+          p_retail_items: Json
+          p_wholesale_items: Json
+          p_delivery_address: string
+        }
+        Returns: Json
+      }
+      create_retail_orders: { Args: { p_items: Json; p_delivery_address: string }; Returns: Json }
+      create_wholesale_orders: { Args: { p_buyer_business_id: string; p_items: Json; p_delivery_address: string }; Returns: Json }
+      create_product_sample_request: { Args: { p_buyer_business_id: string; p_product_id: string; p_quantity: number; p_delivery_address: string }; Returns: string }
+      create_proforma_invoice: { Args: { p_order_id: string; p_valid_until?: string | null; p_terms?: string | null }; Returns: string }
       accept_rfq_offer: { Args: { p_offer_id: string }; Returns: undefined }
       create_business: {
         Args: {

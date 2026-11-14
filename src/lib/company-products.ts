@@ -7,6 +7,11 @@ export type CompanyProduct = {
   name: string;
   description: string | null;
   price: number;
+  retail_price: number | null;
+  is_retail_available: boolean;
+  sample_available: boolean;
+  sample_price: number | null;
+  sample_max_quantity: number;
   min_order_quantity: number;
   image_path: string | null;
   is_active: boolean;
@@ -20,7 +25,7 @@ function client() {
 
 export async function getCompanyProducts(businessId: string): Promise<CompanyProduct[]> {
   const { data, error } = await client().from("products")
-    .select("id,business_id,name,description,price,min_order_quantity,image_path,is_active,created_at")
+    .select("id,business_id,name,description,price,retail_price,is_retail_available,sample_available,sample_price,sample_max_quantity,min_order_quantity,image_path,is_active,created_at")
     .eq("business_id", businessId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -32,6 +37,11 @@ export async function createCompanyProduct(input: {
   name: string;
   description: string;
   price: number;
+  retailPrice?: number | null;
+  isRetailAvailable?: boolean;
+  sampleAvailable?: boolean;
+  samplePrice?: number | null;
+  sampleMaxQuantity?: number;
   minOrderQuantity: number;
   image?: File | null;
 }): Promise<void> {
@@ -64,6 +74,11 @@ export async function createCompanyProduct(input: {
     name: input.name.trim(),
     description: input.description.trim() || null,
     price: input.price,
+    retail_price: input.isRetailAvailable ? input.retailPrice : null,
+    is_retail_available: Boolean(input.isRetailAvailable),
+    sample_available: Boolean(input.sampleAvailable),
+    sample_price: input.sampleAvailable ? input.samplePrice : null,
+    sample_max_quantity: input.sampleMaxQuantity ?? 1,
     min_order_quantity: input.minOrderQuantity,
     image_path: imagePath,
     is_active: false,
@@ -75,12 +90,17 @@ export async function createCompanyProduct(input: {
 }
 
 export async function updateCompanyProduct(productId: string, input: {
-  name: string; description: string; price: number; minOrderQuantity: number;
+  name: string; description: string; price: number; retailPrice?: number | null; isRetailAvailable?: boolean; sampleAvailable?: boolean; samplePrice?: number | null; sampleMaxQuantity?: number; minOrderQuantity: number;
 }): Promise<void> {
   const { error } = await client().from("products").update({
     name: input.name.trim(),
     description: input.description.trim() || null,
     price: input.price,
+    retail_price: input.isRetailAvailable ? input.retailPrice : null,
+    is_retail_available: Boolean(input.isRetailAvailable),
+    sample_available: Boolean(input.sampleAvailable),
+    sample_price: input.sampleAvailable ? input.samplePrice : null,
+    sample_max_quantity: input.sampleMaxQuantity ?? 1,
     min_order_quantity: input.minOrderQuantity,
   }).eq("id", productId);
   if (error) throw error;
@@ -100,4 +120,31 @@ export async function getCompanyProductImageUrl(path: string): Promise<string | 
   const { data, error } = await client().storage.from("product-images").createSignedUrl(path, 60 * 60);
   if (error) return null;
   return data.signedUrl;
+}
+
+
+export type ProductPriceTier = { id: string; product_id: string; min_quantity: number; unit_price: number };
+
+export async function getProductPriceTiers(productId: string): Promise<ProductPriceTier[]> {
+  const { data, error } = await client().from("product_price_tiers")
+    .select("id,product_id,min_quantity,unit_price")
+    .eq("product_id", productId)
+    .order("min_quantity", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as ProductPriceTier[];
+}
+
+export async function addProductPriceTier(productId: string, minQuantity: number, unitPrice: number): Promise<void> {
+  if (!Number.isInteger(minQuantity) || minQuantity < 1 || !Number.isFinite(unitPrice) || unitPrice <= 0) {
+    throw new Error("أدخل كمية صحيحة وسعراً أكبر من الصفر.");
+  }
+  const { error } = await client().from("product_price_tiers").insert({
+    product_id: productId, min_quantity: minQuantity, unit_price: unitPrice,
+  });
+  if (error) throw error;
+}
+
+export async function deleteProductPriceTier(tierId: string): Promise<void> {
+  const { error } = await client().from("product_price_tiers").delete().eq("id", tierId);
+  if (error) throw error;
 }

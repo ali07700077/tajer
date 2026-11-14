@@ -2,6 +2,11 @@
 -- These records contain no real users or credentials. Auth users are created per test run.
 begin;
 
+-- Required local reference data for the deterministic Baghdad fixtures.
+insert into public.governorates (code, name_ar, name_en, is_active)
+values ('baghdad', 'بغداد', 'Baghdad', true)
+on conflict (code) do update set name_ar=excluded.name_ar, name_en=excluded.name_en, is_active=true;
+
 insert into public.businesses
   (id,business_type,name_ar,name_en,governorate_id,verification_status,is_active,created_by)
 values

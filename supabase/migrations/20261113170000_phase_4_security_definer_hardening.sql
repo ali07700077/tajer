@@ -1,12 +1,7 @@
--- Harden exposed SECURITY DEFINER routines with least-privilege EXECUTE grants.
--- Every SECURITY DEFINER routine uses an empty search_path; all object references
--- in these functions are schema-qualified.
+-- Harden only SECURITY DEFINER routines that are defined by this migration chain.
+-- Every routine retained here has an empty search_path and schema-qualified references.
 
-alter function public.rls_auto_enable() set search_path = '';
-
-revoke execute on function public.audit_row_change() from public, anon, authenticated;
 revoke execute on function public.handle_new_user() from public, anon, authenticated;
-revoke execute on function public.write_audit_log(text, text, uuid, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.get_public_supplier_names(uuid[]) from public, anon;
 grant execute on function public.get_public_supplier_names(uuid[]) to authenticated;
 
@@ -25,5 +20,3 @@ revoke execute on function public.has_permission(text) from public, anon;
 grant execute on function public.has_permission(text) to authenticated;
 revoke execute on function public.is_business_member(uuid) from public, anon;
 grant execute on function public.is_business_member(uuid) to authenticated;
-revoke execute on function public.my_permissions() from public, anon;
-grant execute on function public.my_permissions() to authenticated;
