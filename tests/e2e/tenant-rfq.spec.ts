@@ -341,9 +341,12 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
     expect(journalLines?.reduce((sum,line)=>sum+Number(line.debit),0)).toBe(108000);
     expect(journalLines?.reduce((sum,line)=>sum+Number(line.credit),0)).toBe(108000);
 
+    const { data: destinationGovernorate, error: governorateError } = await admin
+      .from("governorates").select("id").limit(1).single();
+    expect(governorateError).toBeNull();
     const { error: shipmentError } = await admin.from("consolidated_shipments").insert({
       buyer_business_id: buyerBusiness, shipment_reference: "E2E-" + campaignId.slice(0,8),
-      status: "collecting", destination_governorate_id: "00000000-0000-4000-8000-000000000001",
+      status: "collecting", destination_governorate_id: destinationGovernorate!.id,
       delivery_address: "بغداد، الكرادة، شارع ١", shipping_cost: 5000, created_by: buyer.id,
     });
     expect(shipmentError).toBeNull();
