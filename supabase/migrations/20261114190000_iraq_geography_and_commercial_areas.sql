@@ -162,6 +162,7 @@ insert into public.commercial_areas(city_id,code,name_ar,name_en,area_type,descr
 select c.id,v.code,v.name_ar,v.name_en,v.area_type,v.description_ar,v.sort_order
 from public.cities c
 join public.governorates g on g.id=c.governorate_id and g.code='baghdad'
+where c.name_ar='بغداد'
 cross join (values
  ('al-shorja','الشورجة','Al-Shorja','wholesale_market','منطقة أسواق الجملة والتجارة المركزية',1),
  ('jameela-market','سوق جميلة','Jameela Market','wholesale_market','منطقة تجارة الجملة والمواد الغذائية',2),
