@@ -17,16 +17,17 @@ export default function OrdersWorkspace({businessId,onOpenRfq,onReorder}:{busine
  const load=useCallback(async()=>{
   if(!supabase){setLoading(false);setMessage("اتصال قاعدة البيانات غير مضبوط.");return;}
   setLoading(true);
+  const db=supabase as any;
   try{
-   let oq=supabase.from("orders").select("id,status,total_amount,currency,created_at,delivery_address,buyer_business_id,supplier_business_id,order_items(id,product_name,quantity,unit_price)").order("created_at",{ascending:false}).limit(50);
-   let wq=supabase.from("warehouses").select("id,business_id,governorate_id,city_id,code,name_ar,warehouse_type,address_text,is_default,is_active").eq("is_active",true).order("name_ar");
+   let oq=db.from("orders").select("id,status,total_amount,currency,created_at,delivery_address,buyer_business_id,supplier_business_id,order_items(id,product_name,quantity,unit_price)").order("created_at",{ascending:false}).limit(50);
+   let wq=db.from("warehouses").select("id,business_id,governorate_id,city_id,code,name_ar,warehouse_type,address_text,is_default,is_active").eq("is_active",true).order("name_ar");
    if(businessId){oq=oq.or(`buyer_business_id.eq.${businessId},supplier_business_id.eq.${businessId}`);wq=wq.eq("business_id",businessId);}
-   const [o,w,g,c]=await Promise.all([oq,wq,supabase.from("governorates").select("id,name_ar,code").eq("is_active",true).order("sort_order"),supabase.from("cities").select("id,name_ar").eq("is_active",true).order("sort_order")]);
+   const [o,w,g,c]=await Promise.all([oq,wq,db.from("governorates").select("id,name_ar,code").eq("is_active",true).order("sort_order"),db.from("cities").select("id,name_ar").eq("is_active",true).order("sort_order")]);
    if(o.error)throw o.error;if(w.error)throw w.error;if(g.error)throw g.error;if(c.error)throw c.error;
    const warehouseRows=(w.data??[]) as Warehouse[];
    const warehouseIds=warehouseRows.map(x=>x.id);
    let stockRows:Stock[]=[];
-   if(warehouseIds.length){const s=await supabase.from("warehouse_stock").select("id,warehouse_id,product_id,on_hand_quantity,reserved_quantity,available_quantity").in("warehouse_id",warehouseIds);if(s.error)throw s.error;stockRows=(s.data??[]) as Stock[];}
+   if(warehouseIds.length){const s=await db.from("warehouse_stock").select("id,warehouse_id,product_id,on_hand_quantity,reserved_quantity,available_quantity").in("warehouse_id",warehouseIds);if(s.error)throw s.error;stockRows=(s.data??[]) as Stock[];}
    setOrders((o.data??[]) as unknown as Order[]);setWarehouses(warehouseRows);setStocks(stockRows);setGovernorates((g.data??[]) as Region[]);setCities((c.data??[]) as Region[]);setMessage("");
   }catch(e){setMessage(e instanceof Error?e.message:"تعذر تحميل الطلبات والمخازن. تحقق من تسجيل الدخول وصلاحيات الشركة.");}
   finally{setLoading(false);}
@@ -39,19 +40,19 @@ export default function OrdersWorkspace({businessId,onOpenRfq,onReorder}:{busine
   const reason=status==="cancelled"?window.prompt("اكتب سبب رفض الطلب (إلزامي):"):null;
   if(status==="cancelled"&&(!reason||reason.trim().length<4)){setMessage("لم يتم الرفض: يجب إدخال سبب واضح من أربعة أحرف على الأقل.");return;}
   setBusy(order.id);setMessage("");
-  try{const {error}=await supabase.rpc("transition_order_status",{p_order_id:order.id,p_next_status:status,p_reason:reason});if(error)throw error;setMessage(status==="confirmed"?"تم اعتماد الطلب وتسجيل العملية.":"تم رفض الطلب وتوثيق السبب.");await load();}
+  try{const {error}=await db.rpc("transition_order_status",{p_order_id:order.id,p_next_status:status,p_reason:reason});if(error)throw error;setMessage(status==="confirmed"?"تم اعتماد الطلب وتسجيل العملية.":"تم رفض الطلب وتوثيق السبب.");await load();}
   catch(e){setMessage(e instanceof Error?e.message:"تعذر تنفيذ الإجراء.");}finally{setBusy(null);}
  }
  async function changeQuantity(order:Order,item:OrderItem){
-  if(!supabase)return;const value=window.prompt(`الكمية الجديدة للمنتج: ${item.product_name}`,String(item.quantity));if(value===null)return;
+  if(!supabase)return;const db=supabase as any;const value=window.prompt(`الكمية الجديدة للمنتج: ${item.product_name}`,String(item.quantity));if(value===null)return;
   const quantity=Number(value);if(!Number.isFinite(quantity)||quantity<=0){setMessage("أدخل كمية أكبر من صفر.");return;}
   const reason=window.prompt("سبب تعديل الكمية:");if(!reason||reason.trim().length<4){setMessage("سبب تعديل الكمية مطلوب.");return;}
-  setBusy(order.id);try{const {error}=await supabase.rpc("update_order_item_quantity",{p_order_item_id:item.id,p_quantity:quantity,p_reason:reason});if(error)throw error;setMessage("تم تحديث الكمية وإعادة احتساب إجمالي الطلب.");await load();}
+  setBusy(order.id);try{const {error}=await db.rpc("update_order_item_quantity",{p_order_item_id:item.id,p_quantity:quantity,p_reason:reason});if(error)throw error;setMessage("تم تحديث الكمية وإعادة احتساب إجمالي الطلب.");await load();}
   catch(e){setMessage(e instanceof Error?e.message:"تعذر تعديل الكمية.");}finally{setBusy(null);}
  }
  async function issueCode(order:Order){
-  if(!supabase)return;setBusy(order.id);setOtp(null);
-  try{const {data,error}=await supabase.rpc("issue_order_handoff_code",{p_order_id:order.id});if(error)throw error;setOtp({orderId:order.id,code:String(data)});setMessage("رمز تسليم أحادي الاستخدام صالح لمدة 30 دقيقة. اعرضه للمستلم بأمان.");}
+  if(!supabase)return;const db=supabase as any;setBusy(order.id);setOtp(null);
+  try{const {data,error}=await db.rpc("issue_order_handoff_code",{p_order_id:order.id});if(error)throw error;setOtp({orderId:order.id,code:String(data)});setMessage("رمز تسليم أحادي الاستخدام صالح لمدة 30 دقيقة. اعرضه للمستلم بأمان.");}
   catch(e){setMessage(e instanceof Error?e.message:"تعذر إصدار رمز التسليم.");}finally{setBusy(null);}
  }
  const governorateName=(id:string)=>governorates.find(g=>g.id===id)?.name_ar??"محافظة غير محددة";
