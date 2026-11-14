@@ -32,6 +32,10 @@ export default function RetailCatalog() {
   const total = cart.reduce((sum, line) => sum + line.quantity * Number(line.product.retail_price), 0);
 
   async function checkout() {
+    if (cart.some(line => line.product.is_demo)) {
+      setMessage("هذه منتجات عرض تجريبية فقط؛ لا يمكن إنشاء طلب أو حجز مخزون منها. سجّل موردين حقيقيين واعتمدهم أولاً.");
+      return;
+    }
     setCheckoutBusy(true); setMessage("");
     try {
       const orders = await createRetailOrders(cart.map(line => ({ product_id: line.product.id, quantity: line.quantity })), deliveryAddress);
@@ -53,7 +57,7 @@ export default function RetailCatalog() {
 
   return <section className="retail-store">
     <div className="retail-intro">
-      <div><span className="eyebrow">B2C · تسوق مباشر</span><h2>تسوق القطعة الواحدة</h2><p>هذه المنتجات أتاحها المورد للبيع بالمفرد. لا حاجة إلى طلب عرض سعر أو حد أدنى للجملة.</p></div>
+      <div><span className="eyebrow">B2C · تسوق مباشر</span><h2>تسوق القطعة الواحدة</h2><p>تصفح منتجات المفرد. قد تظهر بيانات عرض تجريبية عند عدم توفر منتجات من موردين معتمدين.</p></div>
       <div className="retail-cart-summary"><b>سلة المفرد</b><strong>{count} قطعة</strong><span>{money(total)}</span></div>
     </div>
     <input className="search retail-search" placeholder="ابحث عن منتج متاح بالمفرد..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -61,10 +65,11 @@ export default function RetailCatalog() {
     {loading ? <div className="panel">جارٍ تحميل منتجات المفرد...</div> : visible.length === 0 ? <div className="empty-state"><div>🛍</div><h2>لا توجد منتجات مفرد منشورة حالياً</h2><p>عندما يفعّل المورد البيع بالمفرد ويحدد سعر القطعة، سيظهر المنتج هنا.</p></div> :
       <div className="product-grid">{visible.map(product => <article className="product-card" key={product.id}>
         <div className="product-art mint"><span>{product.name.slice(0, 5)}</span><small>متاح للمفرد</small></div>
-        <div className="product-info"><small>{product.category?.name_ar ?? "منتج"}</small><h3>{product.name}</h3>
-          <div className="product-price">{money(Number(product.retail_price))} <span>/ القطعة</span></div>
+        <div className="product-info"><small>{product.category?.name_ar ?? "منتج"} {product.is_demo ? "· بيانات تجريبية" : ""}</small><h3>{product.name}</h3>
+          <div className="product-price">{money(Number(product.retail_price))} <span>/ القطعة · ≈ ${Number(product.retail_price_usd ?? Number(product.retail_price) / 1520).toFixed(2)}</span></div>
+          {product.is_demo && <small>مورد عرض: {product.supplier_name} · {product.governorate_name}</small> }
           <div className="product-foot"><span>المتوفر: {product.available_quantity}</span><span className="in-stock">متاح</span></div>
-          <button className="primary rfq-full" onClick={() => add(product)}>＋ أضف للسلة</button>
+          <button className="primary rfq-full" onClick={() => add(product)}>{product.is_demo ? "＋ أضف للسلة التجريبية" : "＋ أضف للسلة"}</button>
         </div>
       </article>)}</div>}
     <div className="retail-checkout-note">
@@ -78,7 +83,8 @@ export default function RetailCatalog() {
         </div>)}</div>
         <label>عنوان التوصيل<input value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="المحافظة، المنطقة، الشارع، أقرب نقطة دالة" /></label>
         <div><b>الإجمالي: {money(total)}</b></div>
-        <button className="primary" disabled={checkoutBusy || deliveryAddress.trim().length < 8} onClick={() => void checkout()}>{checkoutBusy ? "جارٍ إنشاء الطلب..." : "تأكيد طلب المفرد"}</button>
+        <button className="primary" disabled={checkoutBusy || deliveryAddress.trim().length < 8 || cart.some(line => line.product.is_demo)} onClick={() => void checkout()}>{cart.some(line => line.product.is_demo) ? "الطلب غير متاح لبيانات العرض" : checkoutBusy ? "جارٍ إنشاء الطلب..." : "تأكيد طلب المفرد"}</button>
+        {cart.some(line => line.product.is_demo) && <small>بيانات العرض لا تنشئ طلبات حقيقية ولا تخصم مخزوناً.</small> }
         <small>يتطلب تسجيل الدخول. تُثبت الأسعار والمخزون داخل قاعدة البيانات، وتُقسّم السلة تلقائياً إلى طلب مستقل لكل مورد.</small>
       </>}
     </div>
