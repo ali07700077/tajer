@@ -127,7 +127,7 @@ export default function App() {
         {section === "company" && <CompanyDashboard />}
         {section === "tracking" && <LiveTrackingMap />}
         {section === "orders" && <OrdersWorkspace businessId={activeBusinessId} onOpenRfq={() => setSection("rfqs")} onReorder={() => { setSection("products"); setNotice("اختر المنتجات والكميات لإنشاء طلب جديد؛ إعادة إنشاء الطلب السابق آلياً ستضاف بعد ربط دورة الطلب بالمخزون والحجوزات."); }} />}
-        {section === "suppliers" && <Empty title="بوابة الموردين" desc="سيتمكن المورد من إنشاء ملف شركته وإضافة المنتجات وإدارة عروض الأسعار." action={() => setNotice("تسجيل الموردين قيد التنفيذ ضمن المرحلة التالية.")} />}
+        {section === "suppliers" && <DemoSuppliers onBrowse={() => setSection("products")} />}
         <footer>© 2026 تاجر · منصة التجارة بالجملة في العراق <span>كتالوج العرض تجريبي — لا يمثل عروضاً أو مخزوناً مؤكداً</span></footer>
       </div>
     </main>
