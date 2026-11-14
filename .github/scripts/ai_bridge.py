@@ -155,7 +155,13 @@ def create_branch_and_pr(patch: str, report: str) -> str:
     changed = run(["git", "status", "--porcelain"]).stdout.strip()
     if not changed:
         raise RuntimeError("Claude patch made no repository changes.")
-    run(["git", "add", "--", *[line[3:] for line in changed.splitlines()]])
+    patch_paths = sorted({
+        path for path in re.findall(r"^\\+\\+\\+ b/(.+)$", patch, re.M)
+        if allowed_path(path)
+    })
+    if not patch_paths:
+        raise RuntimeError("No allowed paths found in Claude's patch.")
+    run(["git", "add", "--", *patch_paths])
     run(["git", "commit", "-m", "AI: implement approved TAJER task proposal"])
     run(["git", "push", "--set-upstream", "origin", branch])
 
