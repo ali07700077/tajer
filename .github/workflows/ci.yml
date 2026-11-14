@@ -51,6 +51,9 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
+      - name: Supabase Docker and port preflight
+        run: bash scripts/ci/supabase-preflight.sh
+
       - name: Start isolated local Supabase
         run: |
           if ! supabase start > /tmp/supabase-start.log 2>&1; then
@@ -116,3 +119,22 @@ jobs:
 
       - name: Run tenant isolation and RFQ lifecycle tests
         run: npm run test:e2e
+
+      - name: Collect Supabase and Docker diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/tajer-ci-diagnostics
+          if [ -f /tmp/supabase-start.log ]; then cp /tmp/supabase-start.log /tmp/tajer-ci-diagnostics/supabase-start.log; fi
+          docker ps -a > /tmp/tajer-ci-diagnostics/docker-containers.txt 2>&1 || true
+          docker info > /tmp/tajer-ci-diagnostics/docker-info.txt 2>&1 || true
+          ss -ltnp > /tmp/tajer-ci-diagnostics/listening-ports.txt 2>&1 || true
+          df -h > /tmp/tajer-ci-diagnostics/disk-space.txt 2>&1 || true
+
+      - name: Upload CI diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tajer-ci-diagnostics-${{ github.run_id }}
+          path: /tmp/tajer-ci-diagnostics/
+          if-no-files-found: warn
+          retention-days: 7
