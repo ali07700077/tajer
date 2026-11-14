@@ -341,10 +341,18 @@ for each row execute function public.audit_commercial_change();
 revoke all on function public.audit_commercial_change() from public,anon,authenticated;
 
 -- Normalize persisted monetary values and fractional quantities to the platform precision.
+-- PostgreSQL cannot change a referenced column's type while an UPDATE OF trigger
+-- names that column. Temporarily remove the guard and restore it immediately after
+-- the type conversion; its function and validation logic remain unchanged.
+drop trigger if exists products_validate_wholesale_pricing on public.products;
 alter table public.products
   alter column price type numeric(19,4) using price::numeric(19,4),
   alter column retail_price type numeric(19,4) using retail_price::numeric(19,4),
   alter column sample_price type numeric(19,4) using sample_price::numeric(19,4);
+create trigger products_validate_wholesale_pricing
+before update of min_order_quantity, price
+on public.products
+for each row execute function public.validate_product_wholesale_pricing_update();
 alter table public.product_price_tiers
   alter column unit_price type numeric(19,4) using unit_price::numeric(19,4);
 alter table public.rfq_offers
