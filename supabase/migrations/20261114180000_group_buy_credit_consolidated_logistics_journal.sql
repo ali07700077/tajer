@@ -353,8 +353,14 @@ create trigger products_validate_wholesale_pricing
 before update of min_order_quantity, price
 on public.products
 for each row execute function public.validate_product_wholesale_pricing_update();
+-- The tier-validation trigger references unit_price; remove it only during the type change.
+drop trigger if exists product_price_tiers_validate on public.product_price_tiers;
 alter table public.product_price_tiers
   alter column unit_price type numeric(19,4) using unit_price::numeric(19,4);
+create trigger product_price_tiers_validate
+before insert or update of product_id, min_quantity, unit_price
+on public.product_price_tiers
+for each row execute function public.validate_product_price_tier();
 alter table public.rfq_offers
   alter column unit_price type numeric(19,4) using unit_price::numeric(19,4),
   alter column total_price type numeric(19,4) using total_price::numeric(19,4),
