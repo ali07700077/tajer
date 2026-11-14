@@ -14,9 +14,11 @@ begin
  if not exists(select 1 from public.consolidated_shipment_orders so join public.orders o on o.id=so.order_id
    where so.shipment_id=p_shipment_id and o.status<>'delivered') then
   update public.consolidated_shipments set status='delivered',delivered_at=now(),updated_at=now() where id=p_shipment_id;
-  insert into public.shipment_tracking_events(shipment_id,actor_id,latitude,longitude,event_type,metadata)
-  values(p_shipment_id,auth.uid(),coalesce(v_shipment.last_latitude,0),coalesce(v_shipment.last_longitude,0),
-   'handoff_verified',jsonb_build_object('verified_order_id',p_order_id));
+  if v_shipment.last_latitude is not null and v_shipment.last_longitude is not null then
+   insert into public.shipment_tracking_events(shipment_id,actor_id,latitude,longitude,event_type,metadata)
+   values(p_shipment_id,auth.uid(),v_shipment.last_latitude,v_shipment.last_longitude,
+    'handoff_verified',jsonb_build_object('verified_order_id',p_order_id));
+  end if;
  end if;
  return true;
 end; $$;
