@@ -301,6 +301,8 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
 
     await page.goto("/");
     await expect(page.getByText("سوق الجملة، أقرب إليك")).toBeVisible();
+    await page.getByRole("button", { name: "سلة موحدة" }).click();
+    await expect(page.getByRole("heading", { name: "سلة شراء موحدة للمفرد والجملة" })).toBeVisible();
   } finally {
     for (const actor of actors) {
       await admin.auth.admin.deleteUser(actor.id);
