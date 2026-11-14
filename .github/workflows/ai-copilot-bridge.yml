@@ -1,0 +1,64 @@
+name: TAJER AI Co-Pilot Bridge
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Engineering task for the AI review team"
+        required: true
+        type: string
+      issue_number:
+        description: "Optional GitHub issue number to include as read-only context"
+        required: false
+        type: string
+
+# This bridge is intentionally manual and read-only with respect to repository contents.
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: tajer-ai-bridge-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ai-collaboration:
+    if: github.ref == 'refs/heads/main' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install pinned AI SDKs
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openai==1.109.1" "anthropic==0.69.0"
+
+      - name: Run independent AI analysis
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          AI_TASK: ${{ inputs.task }}
+          OPENAI_MODEL: gpt-4.1-mini
+          ANTHROPIC_MODEL: claude-sonnet-4-20250514
+        run: python .github/scripts/ai_bridge.py
+
+      - name: Upload AI handoff report
+        uses: actions/upload-artifact@v4
+        with:
+          name: tajer-ai-handoff-${{ github.run_id }}
+          path: ai-bridge-output/
+          if-no-files-found: error
+          retention-days: 14
