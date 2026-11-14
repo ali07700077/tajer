@@ -1,7 +1,7 @@
 -- Iraqi geography hierarchy and commercial-area directory authorization.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(10);
 
 select is(
   (select count(*)::bigint from public.governorates where is_active),
