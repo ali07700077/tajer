@@ -45,7 +45,7 @@ export default function RoleSwitcher({ onRoleChange }: Props) {
   }, []);
 
   const available = useMemo(() => ({
-    retail_buyer: Boolean(session),
+    retail_buyer: true,
     wholesale_buyer: businesses.some(b => b.business_type === "buyer"),
     supplier: businesses.some(b => b.business_type === "supplier"),
     // Warehouse writes are intentionally unavailable until a dedicated
