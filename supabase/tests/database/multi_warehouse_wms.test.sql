@@ -64,9 +64,7 @@ select ok(
 );
 select ok(
   exists(select 1 from pg_trigger where tgrelid='public.warehouse_stock_movements'::regclass
-    and tgname like '%immutable%' and not tgisinternal)
-  or exists(select 1 from pg_class where oid='public.warehouse_stock_movements'::regclass
-    and relrowsecurity),
+    and tgname='warehouse_stock_movements_immutable' and not tgisinternal),
   'stock movement history is protected behind row-level security'
 );
 
