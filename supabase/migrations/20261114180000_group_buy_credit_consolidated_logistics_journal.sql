@@ -304,3 +304,38 @@ grant execute on function public.join_group_buy(uuid,uuid,integer,text) to authe
 revoke all on function public.post_order_escrow_journal(uuid,text,numeric,text,text,jsonb) from public,anon,authenticated;
 grant execute on function public.post_order_escrow_journal(uuid,text,numeric,text,text,jsonb) to service_role;
 
+
+-- Append-only audit trail for every stateful commercial, credit, journal and shipment event.
+create or replace function public.audit_commercial_change()
+returns trigger language plpgsql security definer set search_path='' as $$
+declare v_row jsonb; v_entity_id uuid; v_action text;
+begin
+  v_action:=tg_op;
+  v_row:=case when tg_op='DELETE' then to_jsonb(old) else to_jsonb(new) end;
+  v_entity_id:=coalesce(
+    nullif(v_row->>'id','')::uuid,
+    nullif(v_row->>'shipment_id','')::uuid,
+    nullif(v_row->>'order_id','')::uuid
+  );
+  insert into public.audit_logs(actor_id,action,entity_type,entity_id,metadata)
+  values(auth.uid(),lower(v_action),tg_table_name,v_entity_id,jsonb_build_object('record',v_row));
+  return case when tg_op='DELETE' then old else new end;
+end;
+$$;
+
+create trigger group_buy_campaigns_audit after insert or update or delete on public.group_buy_campaigns
+for each row execute function public.audit_commercial_change();
+create trigger group_buy_participants_audit after insert or update or delete on public.group_buy_participants
+for each row execute function public.audit_commercial_change();
+create trigger b2b_credit_accounts_audit after insert or update or delete on public.b2b_credit_accounts
+for each row execute function public.audit_commercial_change();
+create trigger b2b_credit_transactions_audit after insert or update or delete on public.b2b_credit_transactions
+for each row execute function public.audit_commercial_change();
+create trigger financial_journal_transactions_audit after insert on public.financial_journal_transactions
+for each row execute function public.audit_commercial_change();
+create trigger consolidated_shipments_audit after insert or update or delete on public.consolidated_shipments
+for each row execute function public.audit_commercial_change();
+create trigger consolidated_shipment_orders_audit after insert or update or delete on public.consolidated_shipment_orders
+for each row execute function public.audit_commercial_change();
+
+revoke all on function public.audit_commercial_change() from public,anon,authenticated;
