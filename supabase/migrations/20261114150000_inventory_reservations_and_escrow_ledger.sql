@@ -1,4 +1,13 @@
 -- Atomic inventory reservations and append-only escrow event ledger.
+-- Production compatibility: the live baseline originally required every order
+-- to belong to a buyer business. Retail checkout also needs an authenticated
+-- individual buyer, so add that nullable identity and allow business_id to be
+-- null for B2C orders without changing existing B2B rows.
+alter table public.orders
+  add column if not exists buyer_user_id uuid references auth.users(id) on delete restrict;
+alter table public.orders
+  alter column buyer_business_id drop not null;
+
 -- Checkout creates supplier orders and holds stock for 15 minutes. Payment-provider
 -- webhooks must call confirm_inventory_reservation only after verified capture.
 alter table public.products
