@@ -399,6 +399,7 @@ export type Database = {
           buyer_business_id: string | null
           buyer_user_id: string | null
           order_type: string
+          checkout_session_id: string | null
           created_at: string
           currency: string
           delivery_address: string | null
@@ -414,6 +415,7 @@ export type Database = {
           buyer_business_id?: string | null
           buyer_user_id?: string | null
           order_type?: string
+          checkout_session_id?: string | null
           created_at?: string
           currency?: string
           delivery_address?: string | null
@@ -429,6 +431,7 @@ export type Database = {
           buyer_business_id?: string | null
           buyer_user_id?: string | null
           order_type?: string
+          checkout_session_id?: string | null
           created_at?: string
           currency?: string
           delivery_address?: string | null
