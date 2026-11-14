@@ -10,7 +10,7 @@ const statusLabels:Record<string,string>={pending:"بانتظار الاعتما
 const currencyLabel=(currency:string)=>currency==="USD"?"$":"د.ع";
 const formatMoney=(amount:number,currency:string)=>new Intl.NumberFormat("en-US",{maximumFractionDigits:2}).format(Number(amount))+ " "+currencyLabel(currency);
 
-export default function OrdersWorkspace({businessId,onOpenRfq,onReorder}:{businessId:string|null;onOpenRfq:()=>void;onReorder:()=>void}) {
+export default function OrdersWorkspace({businessId,onOpenRfq}:{businessId:string|null;onOpenRfq:()=>void;onReorder:()=>void}) {
  const [orders,setOrders]=useState<Order[]>([]),[warehouses,setWarehouses]=useState<Warehouse[]>([]),[stocks,setStocks]=useState<Stock[]>([]);
  const [governorates,setGovernorates]=useState<Region[]>([]),[cities,setCities]=useState<Region[]>([]);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[message,setMessage]=useState(""),[filter,setFilter]=useState("all"),[otp,setOtp]=useState<{orderId:string;code:string}|null>(null),[handoffInput,setHandoffInput]=useState("");
