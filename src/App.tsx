@@ -137,3 +137,32 @@ function Stat({ label, value, delta, icon }: { label: string; value: string; del
 function ProductGrid({ items, onAdd }: { items: Product[]; onAdd: (p: Product) => void }) { return <div className="product-grid">{items.length ? items.map(p => <article className="product-card" key={p.id}><div className={`product-art ${p.color}`}><span>{p.initials}</span><small>صورة توضيحية</small></div><div className="product-info"><small>{p.category}</small><h3>{p.name}</h3><div className="product-price">{money(p.price)} <span>/ للقطعة {p.isDemo ? `· ≈ ${Number(p.priceUsd ?? p.price / 1520).toFixed(2)} عرض تجريبي` : "· تقديري"}</span></div>{p.isDemo && <small>مورد عرض: {p.supplier} · {p.governorate}</small> }<div className="product-foot"><span>الحد الأدنى: {p.min} قطعة</span><b className={p.stock === "متوفر" ? "in-stock" : "low-stock"}>{p.stock}</b></div><button className="outline" style={{width:"100%",marginTop:12}} onClick={() => onAdd(p)}>＋ أضف للسلة التجريبية</button></div></article>) : <div className="empty">لا توجد نتائج مطابقة لبحثك.</div>}</div>; }
 function Activity({ title, sub, time }: { title: string; sub: string; time: string }) { return <div className="activity"><i/><div><b>{title}</b><small>{sub}</small></div><time>{time}</time></div>; }
 function Empty({ title, desc, action }: { title: string; desc: string; action?: () => void }) { return <div className="empty-state"><div>▤</div><h2>{title}</h2><p>{desc}</p>{action && <button className="primary" onClick={action}>تصفح المنتجات</button>}</div>; }
+
+function DemoSuppliers({ onBrowse }: { onBrowse: () => void }) {
+  const [rows, setRows] = useState<{supplier_name:string;governorate_name:string;count:number}[]>([]);
+  const [loading,setLoading] = useState(true);
+  useEffect(() => {
+    let alive=true;
+    async function load(){
+      if(!supabase){setLoading(false);return;}
+      const {data,error}=await (supabase as any).from("catalog_demo_products").select("supplier_name,governorate_name");
+      if(alive&&!error){
+        const grouped=new Map<string,{supplier_name:string;governorate_name:string;count:number}>();
+        for(const row of data??[]){
+          const key=row.supplier_name;
+          const item=grouped.get(key)??{supplier_name:row.supplier_name,governorate_name:row.governorate_name,count:0};
+          item.count++;grouped.set(key,item);
+        }
+        setRows(Array.from(grouped.values()).sort((a,b)=>a.governorate_name.localeCompare(b.governorate_name,"ar")));
+      }
+      if(alive)setLoading(false);
+    }
+    void load();return()=>{alive=false;};
+  },[]);
+  return <section className="panel">
+    <div className="panel-head"><div><h2>دليل الموردين التجريبي</h2><p>نماذج عرض تغطي المحافظات — ليست شركات حقيقية أو جهات معتمدة.</p></div><span className="muted">{rows.length} نموذج</span></div>
+    {loading?<p>جارٍ تحميل الدليل...</p>:<div className="product-grid">{rows.map(row=><article className="product-card" key={row.supplier_name}><div className="product-info"><small>{row.governorate_name}</small><h3>{row.supplier_name}</h3><div className="product-foot"><span>{row.count} منتجات عرض</span><b className="low-stock">غير معتمد</b></div></div></article>)}</div>}
+    <p className="notice">لا توجد بيانات تسجيل أو تحقق تجاري حقيقية. اعتماد المورد يتطلب مستنداته ومراجعة إدارية.</p>
+    <button className="primary" onClick={onBrowse}>تصفح كتالوج العرض</button>
+  </section>;
+}
