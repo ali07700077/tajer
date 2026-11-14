@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 type OrderItem = { id:string; product_name:string; quantity:number; unit_price:number };
-type Order = { id:string; status:string; total_amount:number; currency:string; created_at:string; delivery_address:string|null; buyer_business_id:string; supplier_business_id:string; order_items:OrderItem[] };
+type Order = { id:string; status:string; total_amount:number; currency:string; total_amount_usd?:number|null; fx_rate_iqd_per_usd?:number|null; created_at:string; delivery_address:string|null; buyer_business_id:string; supplier_business_id:string; order_items:OrderItem[] };
 type Warehouse = { id:string; business_id:string; governorate_id:string; city_id:string|null; code:string; name_ar:string; warehouse_type:string; address_text:string|null; is_default:boolean; is_active:boolean };
 type Stock = { id:string; warehouse_id:string; product_id:string; on_hand_quantity:number; reserved_quantity:number; available_quantity:number };
 type Region = { id:string; name_ar:string; code?:string };
@@ -13,13 +13,13 @@ const formatMoney=(amount:number,currency:string)=>new Intl.NumberFormat("en-US"
 export default function OrdersWorkspace({businessId,onOpenRfq,onReorder}:{businessId:string|null;onOpenRfq:()=>void;onReorder:()=>void}) {
  const [orders,setOrders]=useState<Order[]>([]),[warehouses,setWarehouses]=useState<Warehouse[]>([]),[stocks,setStocks]=useState<Stock[]>([]);
  const [governorates,setGovernorates]=useState<Region[]>([]),[cities,setCities]=useState<Region[]>([]);
- const [loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[message,setMessage]=useState(""),[filter,setFilter]=useState("all"),[otp,setOtp]=useState<{orderId:string;code:string}|null>(null);
+ const [loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[message,setMessage]=useState(""),[filter,setFilter]=useState("all"),[otp,setOtp]=useState<{orderId:string;code:string}|null>(null),[handoffInput,setHandoffInput]=useState("");
  const load=useCallback(async()=>{
   if(!supabase){setLoading(false);setMessage("اتصال قاعدة البيانات غير مضبوط.");return;}
   setLoading(true);
   const db=supabase as any;
   try{
-   let oq=db.from("orders").select("id,status,total_amount,currency,created_at,delivery_address,buyer_business_id,supplier_business_id,order_items(id,product_name,quantity,unit_price)").order("created_at",{ascending:false}).limit(50);
+   let oq=db.from("orders").select("id,status,total_amount,currency,total_amount_usd,fx_rate_iqd_per_usd,created_at,delivery_address,buyer_business_id,supplier_business_id,order_items(id,product_name,quantity,unit_price)").order("created_at",{ascending:false}).limit(50);
    let wq=db.from("warehouses").select("id,business_id,governorate_id,city_id,code,name_ar,warehouse_type,address_text,is_default,is_active").eq("is_active",true).order("name_ar");
    if(businessId){oq=oq.or(`buyer_business_id.eq.${businessId},supplier_business_id.eq.${businessId}`);wq=wq.eq("business_id",businessId);}
    const [o,w,g,c]=await Promise.all([oq,wq,db.from("governorates").select("id,name_ar,code").eq("is_active",true).order("sort_order"),db.from("cities").select("id,name_ar").eq("is_active",true).order("sort_order")]);
@@ -50,6 +50,21 @@ export default function OrdersWorkspace({businessId,onOpenRfq,onReorder}:{busine
   setBusy(order.id);try{const {error}=await db.rpc("update_order_item_quantity",{p_order_item_id:item.id,p_quantity:quantity,p_reason:reason});if(error)throw error;setMessage("تم تحديث الكمية وإعادة احتساب إجمالي الطلب.");await load();}
   catch(e){setMessage(e instanceof Error?e.message:"تعذر تعديل الكمية.");}finally{setBusy(null);}
  }
+ async function reorder(order:Order){
+  if(!supabase)return;setBusy(order.id);setMessage("");
+  try{const {data,error}=await (supabase as any).rpc("reorder_order",{p_source_order_id:order.id});if(error)throw error;setMessage(`تم إنشاء طلب جديد ${String(data?.order_id??"").slice(0,8)} وحجز المخزون لمدة 15 دقيقة.`);await load();}
+  catch(e){setMessage(e instanceof Error?e.message:"تعذرت إعادة الطلب؛ تحقق من المخزون والصلاحيات.");}finally{setBusy(null);}
+ }
+ async function applyFx(order:Order){
+  if(!supabase)return;setBusy(order.id);setMessage("");
+  try{const {data,error}=await (supabase as any).rpc("apply_order_fx_snapshot",{p_order_id:order.id});if(error)throw error;setOrders(rows=>rows.map(x=>x.id===order.id?{...x,total_amount_usd:Number(data.total_amount_usd),fx_rate_iqd_per_usd:Number(data.fx_rate_iqd_per_usd)}:x));setMessage("تم تثبيت سعر الصرف على الطلب. بقي إجمالي IQD هو القيمة المحاسبية الأصلية.");}
+  catch(e){setMessage(e instanceof Error?e.message:"لا يوجد سعر صرف ساري أو لا تملك الصلاحية.");}finally{setBusy(null);}
+ }
+ async function verifyHandoff(order:Order){
+  if(!supabase||!handoffInput.trim())return;setBusy(order.id);
+  try{const {data,error}=await (supabase as any).rpc("verify_order_handoff_code",{p_order_id:order.id,p_code:handoffInput.trim()});if(error)throw error;if(data!==true)throw new Error("رمز غير صحيح أو منتهي الصلاحية أو مستخدم سابقاً.");setMessage("تم التحقق من رمز التسليم وتسجيل استلام الطلب.");setOtp(null);setHandoffInput("");await load();}
+  catch(e){setMessage(e instanceof Error?e.message:"تعذر التحقق من رمز التسليم.");}finally{setBusy(null);}
+ }
  async function issueCode(order:Order){
   if(!supabase)return;const db=supabase as any;setBusy(order.id);setOtp(null);
   try{const {data,error}=await db.rpc("issue_order_handoff_code",{p_order_id:order.id});if(error)throw error;setOtp({orderId:order.id,code:String(data)});setMessage("رمز تسليم أحادي الاستخدام صالح لمدة 30 دقيقة. اعرضه للمستلم بأمان.");}
@@ -60,7 +75,7 @@ export default function OrdersWorkspace({businessId,onOpenRfq,onReorder}:{busine
  return <section className="wms-workspace" data-testid="wms-workspace" dir="rtl">
   <div className="wms-hero"><div><span className="eyebrow">TAJER · WAREHOUSE & ORDER OPERATIONS</span><h2>إدارة الطلبات والمخازن</h2><p>متابعة مخزون الشركات والطلبات ضمن صلاحيات Supabase، مع سجل إجراءات موثق.</p></div><button className="outline" onClick={()=>void load()} disabled={loading}>↻ تحديث البيانات</button></div>
   {message&&<div className="notice" role="status"><p>{message}</p><button onClick={()=>setMessage("")}>×</button></div>}
-  {otp&&<div className="wms-otp" role="status"><div><b>رمز التسليم للطلب</b><small>{otp.orderId.slice(0,8)} · صالح 30 دقيقة · استخدام واحد</small></div><strong>{otp.code}</strong><button className="outline" onClick={()=>{void navigator.clipboard?.writeText(otp.code);setMessage("تم نسخ رمز التسليم.");}}>نسخ الرمز</button></div>}
+  {otp&&<div className="wms-otp" role="status"><div><b>رمز التسليم للطلب</b><small>{otp.orderId.slice(0,8)} · صالح 30 دقيقة · استخدام واحد</small></div><strong aria-label="رمز التسليم">{otp.code}</strong><button className="outline" onClick={()=>{void navigator.clipboard?.writeText(otp.code);setMessage("تم نسخ رمز التسليم.");}}>نسخ الرمز</button><label>تأكيد الاستلام <input aria-label="رمز تأكيد الاستلام" inputMode="text" autoComplete="one-time-code" value={handoffInput} onChange={e=>setHandoffInput(e.target.value)} placeholder="أدخل OTP لدى المستلم"/></label><button className="primary" disabled={!handoffInput.trim()||busy===otp.orderId} onClick={()=>{const o=orders.find(x=>x.id===otp.orderId);if(o)void verifyHandoff(o);}}>تحقق وسجّل الاستلام</button></div>}
   <div className="wms-metrics"><article><small>المخازن النشطة</small><b>{warehouseStats.count}</b><span>ضمن شركاتك</span></article><article><small>إجمالي الوحدات</small><b>{new Intl.NumberFormat("en-US").format(warehouseStats.units)}</b><span>مخزون على الرف</span></article><article><small>المتاح للبيع</small><b>{new Intl.NumberFormat("en-US").format(warehouseStats.available)}</b><span>بعد الحجوزات</span></article><article><small>الطلبات الظاهرة</small><b>{orders.length}</b><span>حسب سياسات RLS</span></article></div>
   <div className="panel">
    <div className="section-heading"><div><span className="eyebrow">MULTI-WAREHOUSE WMS</span><h2>مخازن الشركة</h2><p>التوزيع الجغرافي للمخازن المسجلة. المحافظات العراقية النشطة في الدليل تشمل 19 محافظة.</p></div><span className="muted">{warehouses.length} مخزن</span></div>
@@ -69,12 +84,13 @@ export default function OrdersWorkspace({businessId,onOpenRfq,onReorder}:{busine
   <div className="panel">
    <div className="section-heading"><div><span className="eyebrow">ORDER WORKFLOW</span><h2>الطلبات وإجراءاتها السريعة</h2><p>الاعتماد والرفض وتعديل الكميات تتم عبر دوال خادمية مع تحقق العضوية وتسجيل الأثر.</p></div><select aria-label="تصفية الطلبات" value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">كل الحالات</option><option value="pending">بانتظار الاعتماد</option><option value="confirmed">معتمد</option><option value="processing">قيد التجهيز</option><option value="shipped">تم الشحن</option><option value="delivered">تم التسليم</option><option value="cancelled">مرفوض / ملغى</option></select></div>
    {loading?<p>جارٍ تحميل الطلبات...</p>:filtered.length===0?<div className="empty" data-testid="orders-empty">لا توجد طلبات ظاهرة حالياً. تظهر الطلبات التي تسمح بها سياسات RLS لحسابك فقط.</div>:filtered.map(o=><article className="wms-order" key={o.id} data-testid="wms-order"><div className="wms-order-head"><div><b>طلب #{o.id.slice(0,8).toUpperCase()}</b><small>{new Date(o.created_at).toLocaleString("ar-IQ")} · {o.delivery_address??"عنوان التسليم غير محدد"}</small></div><span className={`wms-status status-${o.status}`}>{statusLabels[o.status]??o.status}</span></div>
-    <div className="wms-order-total"><strong>{formatMoney(Number(o.total_amount),o.currency)}</strong><small>{o.order_items?.length??0} بند · {o.currency}</small></div>
+    <div className="wms-order-total"><strong>{formatMoney(Number(o.total_amount),o.currency)}</strong><small>{o.order_items?.length??0} بند · القيمة المحاسبية</small>
+     {o.total_amount_usd!=null&&<small>المكافئ المثبت: {formatMoney(Number(o.total_amount_usd),"USD")} · 1 USD = {Number(o.fx_rate_iqd_per_usd).toLocaleString("en-US")} IQD</small>}</div>
     {o.order_items?.map(item=><div className="wms-order-line" key={item.id}><span>{item.product_name}<small>{item.quantity} × {formatMoney(Number(item.unit_price),o.currency)}</small></span>{o.status==="pending"&&<button className="text-btn" disabled={busy===o.id} onClick={()=>void changeQuantity(o,item)}>تعديل الكمية</button>}</div>)}
     <div className="wms-actions">
      {o.status==="pending"&&<><button className="primary" disabled={busy===o.id} onClick={()=>void transition(o,"confirmed")}>✓ اعتماد فوري</button><button className="danger-outline outline" disabled={busy===o.id} onClick={()=>void transition(o,"cancelled")}>رفض مع سبب</button></>}
      {o.status==="confirmed"&&<button className="outline" disabled={busy===o.id} onClick={()=>void transition(o,"processing")}>بدء التجهيز</button>}{o.status==="processing"&&<button className="outline" disabled={busy===o.id} onClick={()=>void transition(o,"shipped")}>تسجيل الشحن</button>}<button className="outline" onClick={onOpenRfq}>طلب عرض سعر RFQ</button>
-     <button className="outline" onClick={onReorder}>إعادة الطلب</button>
+     <button className="outline" disabled={busy===o.id} onClick={()=>void reorder(o)}>إعادة الطلب وحجز المخزون</button><button className="outline" disabled={busy===o.id||o.total_amount_usd!=null} onClick={()=>void applyFx(o)}>تثبيت مكافئ USD</button>
      {(o.status==="processing"||o.status==="shipped")&&<button className="outline" disabled={busy===o.id} onClick={()=>void issueCode(o)}>إصدار OTP للتسليم</button>}
     </div>
    </article>)}
