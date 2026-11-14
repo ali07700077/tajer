@@ -111,3 +111,28 @@
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid rgba(151,190,72,.42);outline-offset:2px}
 @media(max-width:1180px){.topbar{height:auto;min-height:76px;flex-wrap:wrap;padding:10px 20px}.role-switcher{order:3;width:100%;justify-content:space-between}.top-actions{margin-right:auto}}
 @media(max-width:620px){.topbar{gap:8px;padding:9px 10px}.role-switcher{order:3;display:block;padding:8px;width:100%;overflow:hidden}.role-switcher-heading{margin-bottom:7px}.role-options{overflow-x:auto;padding-bottom:2px;scrollbar-width:none}.role-options::-webkit-scrollbar{display:none}.role-option{padding:8px 9px;font-size:10px}.top-actions{gap:5px}.crumb{font-size:11px}.content{padding-top:18px}}
+
+
+/* Phase 3 — WMS and order operations */
+.wms-workspace{display:grid;gap:18px;min-width:0}
+.wms-hero{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 24px;border-radius:16px;background:linear-gradient(120deg,#1d3448,#2c4656);color:#f5f8fa;box-shadow:0 16px 36px rgba(28,52,72,.13)}
+.wms-hero .eyebrow{color:#c3d5a1;letter-spacing:.08em}.wms-hero h2{margin:7px 0;font-size:24px}.wms-hero p{margin:0;color:#c3d0d9;font-size:12px;line-height:1.8}
+.wms-hero .outline{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:white;white-space:nowrap}
+.wms-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.wms-metrics article{display:grid;gap:6px;padding:16px;background:rgba(255,255,255,.82);border:1px solid #e7edf0;border-radius:13px;box-shadow:0 7px 20px rgba(26,44,61,.035)}
+.wms-metrics small,.wms-metrics span{font-size:11px;color:#8391a0}.wms-metrics b{font-size:25px;color:#21384c;font-variant-numeric:tabular-nums}
+.wms-warehouse-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.wms-warehouse{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid #edf0f3;border-radius:11px;background:#fbfcfd}
+.wms-warehouse-icon{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;background:#edf3df;color:#718b34;font-size:18px}
+.wms-warehouse b,.wms-warehouse small{display:block}.wms-warehouse b{font-size:12px}.wms-warehouse small{font-size:10px;color:#8391a0;margin-top:4px}
+.wms-order{padding:16px 0;border-top:1px solid #edf0f3}.wms-order-head,.wms-order-total,.wms-order-line{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.wms-order-head b,.wms-order-head small,.wms-order-line small{display:block}.wms-order-head b{font-size:13px}.wms-order-head small{margin-top:5px;color:#8a97a5;font-size:10px;line-height:1.6}
+.wms-status{padding:6px 10px;border-radius:30px;background:#f1f4f7;color:#5e7080;font-size:10px;white-space:nowrap}
+.wms-status.status-pending{background:#fff5df;color:#936b21}.wms-status.status-confirmed,.wms-status.status-delivered{background:#e8f6ee;color:#287b50}.wms-status.status-cancelled{background:#fceeee;color:#a04444}
+.wms-order-total{justify-content:flex-start;margin:13px 0 8px}.wms-order-total strong{font-size:17px;color:#20384c}.wms-order-total small{font-size:10px;color:#8c99a6}
+.wms-order-line{padding:9px 0;border-top:1px dashed #edf0f3;font-size:11px}.wms-order-line small{color:#8794a2;margin-top:4px;font-size:10px}
+.wms-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}.wms-actions button{font-size:11px;padding:9px 12px}.wms-actions .danger-outline{border-color:#f0d7d7;background:#fffafa;color:#a34747}
+.wms-otp{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid #dce9bd;border-radius:12px;background:#f7faee}
+.wms-otp b,.wms-otp small{display:block}.wms-otp b{font-size:12px}.wms-otp small{font-size:10px;color:#82916a;margin-top:4px}.wms-otp strong{font:700 24px ui-monospace,monospace;letter-spacing:.16em;color:#263d4e}
+@media(max-width:760px){.wms-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.wms-hero{align-items:flex-start;flex-direction:column;padding:18px}.wms-hero h2{font-size:20px}}
+@media(max-width:520px){.wms-warehouse-grid{grid-template-columns:1fr}.wms-order-head{align-items:flex-start;flex-direction:column}.wms-otp{align-items:flex-start;flex-wrap:wrap}.wms-otp strong{font-size:20px}}

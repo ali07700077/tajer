@@ -10,6 +10,7 @@ import WholesaleCheckout from "./components/WholesaleCheckout";
 import HybridCheckout from "./components/HybridCheckout";
 import CommercialHub from "./components/CommercialHub";
 import RoleSwitcher, { type AppRole } from "./components/RoleSwitcher";
+import OrdersWorkspace from "./components/OrdersWorkspace";
 
 type Section = "overview" | "products" | "retail" | "wholesale" | "hybrid" | "commercial" | "rfqs" | "orders" | "suppliers" | "businesses" | "company";
 type Product = { id: string; name: string; category: string; price: number; min: number; stock: string; color: string; initials: string; };
@@ -122,7 +123,7 @@ export default function App() {
         {section === "rfqs" && <RfqWorkspace mode="dashboard" />}
         {section === "businesses" && <AccountCenter />}
         {section === "company" && <CompanyDashboard />}
-        {section === "orders" && <Empty title="إدارة الطلبات" desc="ستظهر هنا الطلبات المؤكدة وحالات التجهيز والتسليم بعد تفعيل دورة الطلب." />}
+        {section === "orders" && <OrdersWorkspace businessId={activeBusinessId} onOpenRfq={() => setSection("rfqs")} onReorder={() => { setSection("products"); setNotice("اختر المنتجات والكميات لإنشاء طلب جديد؛ إعادة إنشاء الطلب السابق آلياً ستضاف بعد ربط دورة الطلب بالمخزون والحجوزات."); }} />}
         {section === "suppliers" && <Empty title="بوابة الموردين" desc="سيتمكن المورد من إنشاء ملف شركته وإضافة المنتجات وإدارة عروض الأسعار." action={() => setNotice("تسجيل الموردين قيد التنفيذ ضمن المرحلة التالية.")} />}
         <footer>© 2026 تاجر · منصة التجارة بالجملة في العراق <span>نسخة تطوير أولية</span></footer>
       </div>
