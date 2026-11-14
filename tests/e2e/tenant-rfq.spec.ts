@@ -138,6 +138,73 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
     });
     if (secondProductError) throw secondProductError;
 
+    const hybridWholesaleProductId = randomUUID();
+    const { error: hybridWholesaleProductError } = await admin.from("products").insert({
+      id: hybridWholesaleProductId,
+      business_id: supplierOne,
+      name: "E2E hybrid wholesale fixture",
+      price: 10000,
+      min_order_quantity: 5,
+      stock_quantity: 20,
+      is_active: true,
+    });
+    if (hybridWholesaleProductError) throw hybridWholesaleProductError;
+    const { error: hybridTierError } = await admin.from("product_price_tiers").insert({
+      product_id: hybridWholesaleProductId, min_quantity: 8, unit_price: 8500,
+    });
+    if (hybridTierError) throw hybridTierError;
+
+    const hybridRetailProductId = randomUUID();
+    const { error: hybridRetailProductError } = await admin.from("products").insert({
+      id: hybridRetailProductId,
+      business_id: supplierTwo,
+      name: "E2E hybrid retail fixture",
+      price: 12000,
+      retail_price: 1500,
+      is_retail_available: true,
+      min_order_quantity: 5,
+      stock_quantity: 10,
+      is_active: true,
+    });
+    if (hybridRetailProductError) throw hybridRetailProductError;
+
+    const { data: hybridCheckout, error: hybridCheckoutError } = await buyer.client.rpc("create_hybrid_checkout", {
+      p_buyer_business_id: buyerBusiness,
+      p_retail_items: [{ product_id: hybridRetailProductId, quantity: 2 }],
+      p_wholesale_items: [{ product_id: hybridWholesaleProductId, quantity: 8 }],
+      p_delivery_address: "بغداد، الكرادة، شارع ١",
+    });
+    expect(hybridCheckoutError).toBeNull();
+    expect(hybridCheckout).toBeTruthy();
+    const hybridResult = hybridCheckout as {
+      checkout_session_id: string;
+      status: string;
+      total_amount: number;
+      retail_orders: { order_id: string; total_amount: number }[];
+      wholesale_orders: { order_id: string; total_amount: number }[];
+    };
+    expect(hybridResult.status).toBe("pending_payment");
+    expect(Number(hybridResult.total_amount)).toBe(71000);
+    expect(hybridResult.retail_orders).toHaveLength(1);
+    expect(hybridResult.wholesale_orders).toHaveLength(1);
+    const { data: parentSession, error: parentSessionError } = await buyer.client
+      .from("checkout_sessions").select("id,status,total_amount")
+      .eq("id", hybridResult.checkout_session_id).single();
+    expect(parentSessionError).toBeNull();
+    expect(parentSession?.status).toBe("pending_payment");
+    expect(Number(parentSession?.total_amount)).toBe(71000);
+    const hybridChildIds = [
+      hybridResult.retail_orders[0].order_id,
+      hybridResult.wholesale_orders[0].order_id,
+    ];
+    const { data: linkedChildren, error: linkedChildrenError } = await buyer.client
+      .from("orders").select("id,order_type,checkout_session_id").in("id", hybridChildIds);
+    expect(linkedChildrenError).toBeNull();
+    expect(linkedChildren).toHaveLength(2);
+    expect(linkedChildren?.every(order => order.checkout_session_id === hybridResult.checkout_session_id)).toBe(true);
+    expect(linkedChildren?.some(order => order.order_type === "b2c")).toBe(true);
+    expect(linkedChildren?.some(order => order.order_type === "b2b")).toBe(true);
+
     const { data: belowMoq, error: belowMoqError } = await buyer.client.rpc("create_wholesale_orders", {
       p_buyer_business_id: buyerBusiness,
       p_items: [{ product_id: wholesaleProductId, quantity: 4 }],
