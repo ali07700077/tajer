@@ -1,0 +1,79 @@
+name: TAJER AI Co-Pilot Bridge
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Engineering task for the AI implementation team"
+        required: true
+        type: string
+      issue_number:
+        description: "Optional GitHub issue number to include as read-only context"
+        required: false
+        type: string
+
+# Write access is limited to creating an implementation branch and pull request.
+# Branch protection and human review remain the final merge boundary.
+permissions:
+  contents: write
+  issues: read
+  pull-requests: write
+
+concurrency:
+  group: tajer-ai-bridge-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ai-collaboration:
+    if: github.ref == 'refs/heads/main' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install project dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; fi
+
+      - name: Install AI SDKs
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openai==1.109.1" "anthropic==0.69.0"
+
+      - name: Run OpenAI architecture and Claude implementation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          AI_TASK: ${{ inputs.task }}
+          OPENAI_MODEL: gpt-4.1-mini
+          ANTHROPIC_MODEL: claude-sonnet-4-20250514
+        run: python .github/scripts/ai_bridge.py
+
+      - name: Upload AI handoff report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tajer-ai-handoff-${{ github.run_id }}
+          path: ai-bridge-output/
+          if-no-files-found: warn
+          retention-days: 14
