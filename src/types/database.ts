@@ -187,6 +187,38 @@ export type Database = {
           },
         ]
       }
+      checkout_sessions: {
+        Row: {
+          id: string
+          buyer_user_id: string
+          buyer_business_id: string | null
+          delivery_address: string
+          status: string
+          total_amount: number
+          currency: string
+          expires_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          buyer_user_id: string
+          buyer_business_id?: string | null
+          delivery_address: string
+          status?: string
+          total_amount?: number
+          currency?: string
+          expires_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -900,6 +932,15 @@ export type Database = {
       append_escrow_ledger_entry: { Args: { p_order_id: string; p_entry_type: string; p_amount: number; p_idempotency_key: string; p_provider_reference?: string | null; p_metadata?: Json }; Returns: string }
       confirm_inventory_reservation: { Args: { p_order_id: string }; Returns: number }
       release_expired_inventory_reservations: { Args: { p_limit?: number }; Returns: number }
+      create_hybrid_checkout: {
+        Args: {
+          p_buyer_business_id: string | null
+          p_retail_items: Json
+          p_wholesale_items: Json
+          p_delivery_address: string
+        }
+        Returns: Json
+      }
       create_retail_orders: { Args: { p_items: Json; p_delivery_address: string }; Returns: Json }
       create_wholesale_orders: { Args: { p_buyer_business_id: string; p_items: Json; p_delivery_address: string }; Returns: Json }
       create_product_sample_request: { Args: { p_buyer_business_id: string; p_product_id: string; p_quantity: number; p_delivery_address: string }; Returns: string }
