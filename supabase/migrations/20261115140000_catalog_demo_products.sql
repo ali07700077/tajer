@@ -13,8 +13,8 @@ create table if not exists public.catalog_demo_products (
   min_order_quantity integer not null default 1 check (min_order_quantity > 0),
   stock_quantity integer not null default 0 check (stock_quantity >= 0),
   category_name text,
-  supplier_name text,
-  governorate_name text,
+  supplier_name text not null,
+  governorate_name text not null,
   is_retail_available boolean not null default false,
   demo_only boolean not null default true,
   created_at timestamptz not null default now()
@@ -48,7 +48,20 @@ $$;
 alter table public.catalog_demo_products enable row level security;
 revoke all on public.catalog_demo_products from public, anon, authenticated;
 grant select on public.catalog_demo_products to anon, authenticated;
-drop policy if exists catalog_demo_products_public_demo_read on public.catalog_demo_products;
+-- PostgreSQL permissive policies combine with OR. Remove all policies on this
+-- relation first so a legacy USING (true) policy cannot expose non-demo rows.
+do $
+declare v_policy record;
+begin
+  for v_policy in
+    select policyname from pg_policies
+    where schemaname = 'public' and tablename = 'catalog_demo_products'
+  loop
+    execute format('drop policy %I on public.catalog_demo_products', v_policy.policyname);
+  end loop;
+end;
+$;
+
 create policy catalog_demo_products_public_demo_read
   on public.catalog_demo_products for select to anon, authenticated
   using (demo_only is true);
