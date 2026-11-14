@@ -1,38 +1,48 @@
 # TAJER AI Co-Pilot Bridge
 
 ## Purpose
-This workflow runs a sequential, two-stage engineering handoff:
+This workflow runs a sequential implementation cycle:
 1. OpenAI reads the available `AI_SYNC_LOG.md`, the task, and optional GitHub issue context, then creates the architecture plan.
-2. Anthropic receives that exact plan plus the same context and returns a proposed implementation for human review.
+2. Claude receives that exact plan and returns a unified code patch.
+3. The runner validates patch paths, applies the patch on a new isolated branch, runs available project checks, pushes the branch, and opens a pull request.
 
-The workflow calls provider APIs. It does not connect interactive ChatGPT and Claude sessions or transfer their private chat histories.
+This uses provider APIs. It does not connect interactive ChatGPT and Claude sessions or transfer their private chat histories.
 
-## Setup (repository owner)
-1. Open GitHub **Settings → Secrets and variables → Actions**.
-2. Add repository Actions secrets named `OPENAI_API_KEY` and `ANTHROPIC_API_KEY`. Never commit keys or paste them into Issues, PRs, or source files.
-3. Confirm API access and billing with both providers. API usage may incur separate charges.
-4. After this PR is reviewed and merged by the repository owner, open **Actions → TAJER AI Co-Pilot Bridge → Run workflow** on `main`.
-5. Enter a concrete task and, optionally, a GitHub issue number.
-6. Download the `tajer-ai-handoff-<run-id>` artifact to review the architecture plan and Claude's proposal.
+## Owner setup
+1. Add repository Actions secrets `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` in Settings → Secrets and variables → Actions.
+2. Confirm API access and billing with both providers. API usage can incur separate charges.
+3. Ensure branch protection/rulesets require CI and owner review before merging to `main`.
+4. Merge this bridge PR after reviewing its permissions and code.
+5. Run Actions → TAJER AI Co-Pilot Bridge → Run workflow on `main`, provide a concrete task and optional issue number.
+6. Review the generated AI implementation PR and download its workflow artifact.
 
-## Sequential flow
-- Stage 1: OpenAI creates an implementation-ready architecture plan.
-- Stage 2: Claude receives the full OpenAI plan and creates a file-by-file implementation proposal, including diffs where the supplied context is sufficient.
-- Output: `ai-bridge-output/AI_HANDOFF.md` as a workflow artifact.
+## Permissions
+The workflow token receives:
+- `contents: write` — create and push a feature branch.
+- `pull-requests: write` — open the implementation PR.
+- `issues: read` — read optional issue context.
 
-The script reads `AI_SYNC_LOG.md` from the checked-out workflow ref when present. If it is absent, the report explicitly records that limitation; the script does not silently invent repository state. Ensure the current sync log is merged into `main` before running if it must be included.
+It does not receive `administration`, `secrets`, `actions`, `deployments`, or `environments` write permissions. It cannot change repository settings, secrets, branch protection, or environment approvals.
 
-## Security model
-- Manual dispatch only; no automatic execution from arbitrary issue comments.
-- Workflow token is read-only: `contents: read`, `issues: read`.
-- Checkout does not persist GitHub credentials.
-- No repository writes, commits, pushes, branch creation, PR creation, SQL execution, deployment, or production access.
-- Issue text and sync-log content are treated as untrusted input and bounded before sending to model APIs.
-- The AI output is a proposal, not a verified patch or test result. A maintainer must inspect actual source files, apply approved changes on a feature branch, run CI, and review through a PR.
-- Payments, wallets, escrow, credit, settlement and custody remain outside MVP scope unless a separate owner-approved decision changes that boundary.
+## Patch safety boundary
+Claude-generated patches are restricted to:
+- `src/`, `app/`, `components/`, `tests/`, `test/`, `docs/`
+- `README.md`, `package.json`, `package-lock.json`, `tsconfig.json`, `vite.config.ts`
+
+The bridge rejects paths outside this allowlist, including `.github/`, environment/secret files, Supabase migrations, and production infrastructure. Extend the allowlist only after reviewing the need and risk.
+
+## Execution and review
+- Available `typecheck` or `build` and `test` scripts are run when present.
+- A successful local run does not replace GitHub CI, code review, security review, or application testing.
+- The workflow creates a feature branch and PR; it never merges automatically.
+- Human owner approval remains required for merging to `main`.
+- No production deployment or production database operation is performed.
+
+## Staging deployment
+Staging deployment is not enabled by this bridge yet. It should be added only after a dedicated staging environment, scoped deployment credentials, and environment protection rules are configured. The current GitHub token has no deployment permission.
+
+## Product and security boundaries
+Payments, wallets, escrow, credit, settlement and custody remain outside MVP scope unless a separate owner-approved architecture decision changes that boundary. Issue and sync-log content are treated as untrusted input. Secrets are never sent to model providers.
 
 ## Limitations
-This is API-based sequential orchestration, not a live shared conversation between the interactive ChatGPT and Claude products. Each provider's API key, model availability, and billing are controlled separately by the repository owner. Model names are configured in the workflow.
-
-## Output and approvals
-The artifact contains the OpenAI architecture plan followed by Claude's implementation proposal. It does not claim tests passed unless actual test evidence is supplied. It does not authorize merging, production migrations, deployment, or changes to production data.
+This is API-based sequential orchestration, not a live shared conversation between the interactive ChatGPT and Claude products. API keys, provider access, model availability, and billing are controlled separately by the repository owner.
