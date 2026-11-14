@@ -364,3 +364,15 @@ alter table public.proforma_invoice_items
   alter column quantity type numeric(19,4) using quantity::numeric(19,4),
   alter column unit_price type numeric(19,4) using unit_price::numeric(19,4);
 
+
+alter table public.order_items
+  alter column line_total type numeric(19,4) using line_total::numeric(19,4);
+alter table public.product_sample_requests
+  alter column total_amount type numeric(19,4) using total_amount::numeric(19,4);
+alter table public.proforma_invoice_items
+  alter column line_total type numeric(19,4) using line_total::numeric(19,4);
+alter table public.checkout_sessions
+  alter column total_amount type numeric(19,4) using total_amount::numeric(19,4);
+
+create trigger b2b_credit_transactions_immutable before update or delete on public.b2b_credit_transactions
+for each row execute function public.reject_financial_journal_mutation();
