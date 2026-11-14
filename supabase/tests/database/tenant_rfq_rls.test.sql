@@ -3,7 +3,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(57);
+select plan(63);
 
 insert into auth.users
   (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
@@ -255,6 +255,14 @@ select ok(not has_table_privilege('authenticated','public.consolidated_shipments
 select ok(has_table_privilege('authenticated','public.group_buy_campaigns','SELECT'),'authenticated users can browse group-buy campaigns under RLS');
 select ok(has_table_privilege('authenticated','public.b2b_credit_accounts','SELECT'),'business buyers can read their credit facility under RLS');
 select ok(has_table_privilege('authenticated','public.consolidated_shipments','SELECT'),'business buyers can read their consolidated shipments under RLS');
+
+
+select is((select numeric_precision::integer from information_schema.columns where table_schema='public' and table_name='products' and column_name='price'),19,'product wholesale price uses NUMERIC(19,4)');
+select is((select numeric_scale::integer from information_schema.columns where table_schema='public' and table_name='product_price_tiers' and column_name='unit_price'),4,'wholesale tier prices preserve four decimal places');
+select is((select numeric_precision::integer from information_schema.columns where table_schema='public' and table_name='orders' and column_name='total_amount'),19,'order totals use NUMERIC(19,4)');
+select is((select numeric_scale::integer from information_schema.columns where table_schema='public' and table_name='proforma_invoices' and column_name='subtotal'),4,'proforma invoice subtotal preserves four decimal places');
+select ok((select prosecdef from pg_proc where oid='public.audit_commercial_change()'::regprocedure),'commercial audit trigger runs with controlled definer privileges');
+select is((select count(*)::integer from pg_trigger where tgname in ('group_buy_campaigns_audit','group_buy_participants_audit','b2b_credit_accounts_audit','b2b_credit_transactions_audit','financial_journal_transactions_audit','consolidated_shipments_audit','consolidated_shipment_orders_audit')),7,'all seven commercial state tables write audit records');
 
 select * from finish();
 rollback;
