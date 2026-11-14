@@ -128,6 +128,19 @@ using (public.is_business_member(business_id));
 revoke all on function public.validate_warehouse_location() from public,anon,authenticated;
 revoke all on function public.validate_warehouse_stock_tenant() from public,anon,authenticated;
 
+
+create or replace function public.reject_warehouse_movement_mutation()
+returns trigger language plpgsql set search_path='' as $
+begin
+  raise exception 'سجل حركات المخزون غير قابل للتعديل أو الحذف' using errcode='55000';
+end;
+$;
+drop trigger if exists warehouse_stock_movements_immutable on public.warehouse_stock_movements;
+create trigger warehouse_stock_movements_immutable
+before update or delete on public.warehouse_stock_movements
+for each row execute function public.reject_warehouse_movement_mutation();
+revoke all on function public.reject_warehouse_movement_mutation() from public,anon,authenticated;
+
 -- One default warehouse per existing business, located at its registered city/governorate.
 insert into public.warehouses(business_id,governorate_id,city_id,code,name_ar,name_en,is_default)
 select b.id,b.governorate_id,b.city_id,'MAIN','المخزن الرئيسي','Main Warehouse',true
