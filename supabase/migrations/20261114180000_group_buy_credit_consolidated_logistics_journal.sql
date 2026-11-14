@@ -380,6 +380,12 @@ with check (
 );
 alter table public.orders
   alter column total_amount type numeric(19,4) using total_amount::numeric(19,4);
+-- Generated columns depend on the source columns being widened. Drop and
+-- recreate them around the conversion so their expressions remain intact.
+alter table public.order_items drop column line_total;
+alter table public.product_sample_requests drop column total_amount;
+alter table public.proforma_invoice_items drop column line_total;
+
 alter table public.order_items
   alter column quantity type numeric(19,4) using quantity::numeric(19,4),
   alter column unit_price type numeric(19,4) using unit_price::numeric(19,4);
@@ -391,13 +397,12 @@ alter table public.proforma_invoice_items
   alter column quantity type numeric(19,4) using quantity::numeric(19,4),
   alter column unit_price type numeric(19,4) using unit_price::numeric(19,4);
 
-
 alter table public.order_items
-  alter column line_total type numeric(19,4) using line_total::numeric(19,4);
+  add column line_total numeric(19,4) generated always as (quantity * unit_price) stored;
 alter table public.product_sample_requests
-  alter column total_amount type numeric(19,4) using total_amount::numeric(19,4);
+  add column total_amount numeric(19,4) generated always as (quantity * unit_price) stored;
 alter table public.proforma_invoice_items
-  alter column line_total type numeric(19,4) using line_total::numeric(19,4);
+  add column line_total numeric(19,4) generated always as (quantity * unit_price) stored;
 alter table public.checkout_sessions
   alter column total_amount type numeric(19,4) using total_amount::numeric(19,4);
 
