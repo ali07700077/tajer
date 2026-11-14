@@ -1,0 +1,130 @@
+name: TAJER CI
+on:
+  push:
+    branches:
+      - implementation/bootstrap
+      - fix/db-migrations-rls
+      - 'feat/**'
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - implementation/bootstrap
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Production build
+        run: npm run build
+
+  e2e:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Supabase Docker and port preflight
+        run: bash scripts/ci/supabase-preflight.sh
+
+      - name: Start isolated local Supabase and reset database (debug logs)
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase start --exclude studio,imgproxy --debug
+          supabase db reset --debug
+
+      - name: Wait for Supabase health and export local credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          status_file=/tmp/supabase-status.json
+          api_url=""
+          anon_key=""
+          service_role_key=""
+
+          for attempt in $(seq 1 24); do
+            if supabase status --output json > "$status_file" 2>/tmp/supabase-status-error.log; then
+              api_url="$(jq -r '[.. | objects | to_entries[]? | select((.key | ascii_upcase) == "API_URL" or (.key | ascii_upcase) == "SUPABASE_URL") | .value | select(type == "string" and length > 0)][0] // empty' "$status_file")"
+              anon_key="$(jq -r '[.. | objects | to_entries[]? | select((.key | ascii_upcase) == "ANON_KEY" or (.key | ascii_upcase) == "PUBLISHABLE_KEY" or (.key | ascii_upcase) == "SUPABASE_ANON_KEY") | .value | select(type == "string" and length > 0)][0] // empty' "$status_file")"
+              service_role_key="$(jq -r '[.. | objects | to_entries[]? | select((.key | ascii_upcase) == "SERVICE_ROLE_KEY" or (.key | ascii_upcase) == "SECRET_KEY" or (.key | ascii_upcase) == "SUPABASE_SERVICE_ROLE_KEY") | .value | select(type == "string" and length > 0)][0] // empty' "$status_file")"
+              if [[ -n "$api_url" && -n "$anon_key" && -n "$service_role_key" ]] &&
+                 curl --silent --fail --max-time 4 "$api_url/auth/v1/health" >/dev/null; then
+                break
+              fi
+            fi
+            echo "Supabase not ready (attempt $attempt/24); retrying in 5 seconds..."
+            sleep 5
+          done
+
+          if [[ -z "$api_url" || -z "$anon_key" || -z "$service_role_key" ]] ||
+             ! curl --silent --fail --max-time 4 "$api_url/auth/v1/health" >/dev/null; then
+            echo "Supabase did not become healthy with usable local credentials within 120 seconds."
+            cat /tmp/supabase-status-error.log 2>/dev/null || true
+            cat "$status_file" 2>/dev/null || true
+            exit 1
+          fi
+
+          printf '%s' "$anon_key" | sed 's/^/::add-mask::/'
+          printf '%s' "$service_role_key" | sed 's/^/::add-mask::/'
+          {
+            printf 'SUPABASE_URL=%s\n' "$api_url"
+            printf 'SUPABASE_ANON_KEY=%s\n' "$anon_key"
+            printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$service_role_key"
+            printf 'VITE_SUPABASE_URL=%s\n' "$api_url"
+            printf 'VITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$anon_key"
+          } >> "$GITHUB_ENV"
+          echo "Supabase API and Auth are healthy; local credentials exported."
+
+      - name: Run database unit and RLS tests
+        run: supabase test db
+
+      - name: Run tenant isolation and RFQ lifecycle tests
+        run: npm run test:e2e
+
+      - name: Collect Supabase and Docker diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/tajer-ci-diagnostics
+          if [ -f /tmp/supabase-start.log ]; then cp /tmp/supabase-start.log /tmp/tajer-ci-diagnostics/supabase-start.log; fi
+          docker ps -a > /tmp/tajer-ci-diagnostics/docker-containers.txt 2>&1 || true
+          docker info > /tmp/tajer-ci-diagnostics/docker-info.txt 2>&1 || true
+          ss -ltnp > /tmp/tajer-ci-diagnostics/listening-ports.txt 2>&1 || true
+          df -h > /tmp/tajer-ci-diagnostics/disk-space.txt 2>&1 || true
+
+      - name: Upload CI diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tajer-ci-diagnostics-${{ github.run_id }}
+          path: /tmp/tajer-ci-diagnostics/
+          if-no-files-found: warn
+          retention-days: 7
