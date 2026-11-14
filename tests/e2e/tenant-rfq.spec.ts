@@ -287,6 +287,71 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
     expect(sampleError).toBeNull();
     expect(sampleRequestId).toBeTruthy();
 
+    const campaignId = randomUUID();
+    const { error: campaignError } = await admin.from("group_buy_campaigns").insert({
+      id: campaignId, supplier_business_id: supplierOne, product_id: wholesaleProductId,
+      title_ar: "حملة اختبار الشراء الجماعي", target_quantity: 20, max_quantity: 40,
+      unit_price: 7800, ends_at: new Date(Date.now() + 86400000).toISOString(),
+    });
+    expect(campaignError).toBeNull();
+    const { data: participantId, error: joinError } = await buyer.client.rpc("join_group_buy", {
+      p_campaign_id: campaignId, p_buyer_business_id: buyerBusiness,
+      p_quantity: 4, p_idempotency_key: "e2e-group-buy-" + campaignId,
+    });
+    expect(joinError).toBeNull();
+    expect(participantId).toBeTruthy();
+    const { data: campaignAfterJoin, error: campaignReadError } = await buyer.client
+      .from("group_buy_campaigns").select("committed_quantity,status").eq("id",campaignId).single();
+    expect(campaignReadError).toBeNull();
+    expect(campaignAfterJoin?.committed_quantity).toBe(4);
+    const { data: participantVisible, error: participantReadError } = await supplierA.client
+      .from("group_buy_participants").select("quantity").eq("id",participantId).single();
+    expect(participantReadError).toBeNull();
+    expect(participantVisible?.quantity).toBe(4);
+    const { data: participantHidden, error: participantHiddenError } = await supplierB.client
+      .from("group_buy_participants").select("id").eq("id",participantId);
+    expect(participantHiddenError).toBeNull();
+    expect(participantHidden).toEqual([]);
+
+    const { error: creditAccountError } = await admin.from("b2b_credit_accounts").insert({
+      buyer_business_id: buyerBusiness, credit_limit: 500000, outstanding_balance: 125000,
+      status: "approved", payment_term_days: 30, approved_by: buyer.id, approved_at: new Date().toISOString(),
+    });
+    expect(creditAccountError).toBeNull();
+    const { data: buyerCredit, error: buyerCreditError } = await buyer.client
+      .from("b2b_credit_accounts").select("credit_limit,outstanding_balance").eq("buyer_business_id",buyerBusiness).single();
+    expect(buyerCreditError).toBeNull();
+    expect(Number(buyerCredit?.credit_limit)).toBe(500000);
+    const { data: supplierCredit, error: supplierCreditError } = await supplierA.client
+      .from("b2b_credit_accounts").select("id").eq("buyer_business_id",buyerBusiness);
+    expect(supplierCreditError).toBeNull();
+    expect(supplierCredit).toEqual([]);
+
+    const { data: journalId, error: journalError } = await admin.rpc("post_order_escrow_journal", {
+      p_order_id: wholesaleOrder.order_id, p_event_type: "payment_capture",
+      p_amount: 108000, p_idempotency_key: "e2e-journal-" + wholesaleOrder.order_id,
+      p_provider_reference: "test-gateway-capture", p_metadata: { source: "playwright" },
+    });
+    expect(journalError).toBeNull();
+    expect(journalId).toBeTruthy();
+    const { data: journalLines, error: journalLinesError } = await buyer.client
+      .from("financial_journal_lines").select("debit,credit").eq("journal_transaction_id",journalId);
+    expect(journalLinesError).toBeNull();
+    expect(journalLines).toHaveLength(2);
+    expect(journalLines?.reduce((sum,line)=>sum+Number(line.debit),0)).toBe(108000);
+    expect(journalLines?.reduce((sum,line)=>sum+Number(line.credit),0)).toBe(108000);
+
+    const { error: shipmentError } = await admin.from("consolidated_shipments").insert({
+      buyer_business_id: buyerBusiness, shipment_reference: "E2E-" + campaignId.slice(0,8),
+      status: "collecting", destination_governorate_id: "00000000-0000-4000-8000-000000000001",
+      delivery_address: "بغداد، الكرادة، شارع ١", shipping_cost: 5000, created_by: buyer.id,
+    });
+    expect(shipmentError).toBeNull();
+    const { data: buyerShipments, error: buyerShipmentError } = await buyer.client
+      .from("consolidated_shipments").select("shipment_reference,status").eq("buyer_business_id",buyerBusiness);
+    expect(buyerShipmentError).toBeNull();
+    expect(buyerShipments?.some(shipment=>shipment.status==="collecting")).toBe(true);
+
     const { data: invoiceId, error: invoiceError } = await supplierA.client.rpc("create_proforma_invoice", {
       p_order_id: wholesaleOrder.order_id,
       p_valid_until: null,
@@ -303,6 +368,9 @@ test("company isolation and complete RFQ lifecycle", async ({ page }) => {
     await expect(page.getByText("سوق الجملة، أقرب إليك")).toBeVisible();
     await page.getByRole("button", { name: "سلة موحدة" }).click();
     await expect(page.getByRole("heading", { name: "سلة شراء موحدة للمفرد والجملة" })).toBeVisible();
+    await page.getByRole("button", { name: "الخدمات التجارية" }).click();
+    await expect(page.getByRole("heading", { name: "الخدمات التجارية والمالية" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "حملات الشراء الجماعي" })).toBeVisible();
   } finally {
     for (const actor of actors) {
       await admin.auth.admin.deleteUser(actor.id);
