@@ -130,11 +130,14 @@ revoke all on function public.validate_warehouse_stock_tenant() from public,anon
 
 
 create or replace function public.reject_warehouse_movement_mutation()
-returns trigger language plpgsql set search_path='' as $
+returns trigger
+language plpgsql
+set search_path = ''
+as $function$
 begin
-  raise exception 'سجل حركات المخزون غير قابل للتعديل أو الحذف' using errcode='55000';
+  raise exception 'سجل حركات المخزون غير قابل للتعديل أو الحذف' using errcode = '55000';
 end;
-$;
+$function$;
 drop trigger if exists warehouse_stock_movements_immutable on public.warehouse_stock_movements;
 create trigger warehouse_stock_movements_immutable
 before update or delete on public.warehouse_stock_movements
