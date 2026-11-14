@@ -117,7 +117,7 @@ export default function App() {
           <ProductGrid items={products.slice(0, 3)} onAdd={addToCart} />
           <div className="lower-grid"><div className="panel"><div className="panel-head"><h3>كيف يعمل تاجر؟</h3><span className="muted">3 خطوات</span></div><Activity title="1. اكتشف المنتجات" sub="ابحث في كتالوج الموردين وقارن الخيارات." time="01" /><Activity title="2. أرسل طلب عرض سعر" sub="حدد الكميات وأضف ملاحظاتك للمورد." time="02" /><Activity title="3. تفاوض وأكمل الطلب" sub="راجع عروض الموردين واتفق على التفاصيل." time="03" /></div><div className="panel callout"><div className="callout-icon">✦</div><h3>هل أنت مورّد؟</h3><p>جهّز ملف شركتك وأضف منتجاتك للوصول إلى تجار الجملة في العراق.</p><button className="outline" onClick={() => setSection("suppliers")}>ملف الموردين</button></div></div>
         </>}
-        {section === "products" && <RfqWorkspace mode="catalog" />}
+        {section === "products" && <DemoCatalog onAdd={addToCart} />}
         {section === "retail" && <RetailCatalog />}
         {section === "wholesale" && <WholesaleCheckout />}
         {section === "hybrid" && <HybridCheckout />}
@@ -163,5 +163,25 @@ function DemoSuppliers({ onBrowse }: { onBrowse: () => void }) {
     {loading?<p>جارٍ تحميل الدليل...</p>:<div className="product-grid">{rows.map(row=><article className="product-card" key={row.supplier_name}><div className="product-info"><small>{row.governorate_name}</small><h3>{row.supplier_name}</h3><div className="product-foot"><span>{row.count} منتجات عرض</span><b className="low-stock">غير معتمد</b></div></div></article>)}</div>}
     <p className="notice">لا توجد بيانات تسجيل أو تحقق تجاري حقيقية. اعتماد المورد يتطلب مستنداته ومراجعة إدارية.</p>
     <button className="primary" onClick={onBrowse}>تصفح كتالوج العرض</button>
+  </section>;
+}
+
+function DemoCatalog({ onAdd }: { onAdd: (p: Product) => void }) {
+  const [items,setItems] = useState<Product[]>([]);
+  const [loading,setLoading] = useState(true);
+  const [message,setMessage] = useState("");
+  useEffect(() => {
+    let alive=true;
+    getPublicCatalog().then(rows=>{
+      if(!alive)return;
+      setItems(rows.map(p=>({id:p.id,name:p.name,category:p.category?.name_ar??"غير مصنف",price:Number(p.price),min:p.min_order_quantity,stock:p.available_quantity>0?"متوفر":"غير متوفر",color:"mint",initials:p.name.slice(0,5),isDemo:p.is_demo,priceUsd:p.price_usd,supplier:p.supplier_name,governorate:p.governorate_name})));
+    }).catch(e=>{if(alive)setMessage(e instanceof Error?e.message:"تعذر تحميل الكتالوج.");})
+      .finally(()=>{if(alive)setLoading(false);});
+    return()=>{alive=false;};
+  },[]);
+  return <section><div className="section-heading"><div><h2>كتالوج تاجر</h2><p>أسعار ومخزون عرض تجريبي — لا تمثل عروضاً حقيقية.</p></div><span className="muted">{items.length} منتج</span></div>
+    {message&&<div className="notice">{message}</div>}
+    {loading?<div className="panel">جارٍ تحميل الكتالوج...</div>:<ProductGrid items={items} onAdd={onAdd}/>}
+    <div className="notice">إضافة المنتج هنا تنشئ سلة معاينة محلية فقط. لا يتم إرسال طلب شراء أو حجز مخزون للمنتجات التجريبية.</div>
   </section>;
 }
