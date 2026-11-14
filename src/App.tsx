@@ -14,7 +14,7 @@ import OrdersWorkspace from "./components/OrdersWorkspace";
 import LiveTrackingMap from "./components/LiveTrackingMap";
 
 type Section = "overview" | "products" | "retail" | "wholesale" | "hybrid" | "commercial" | "rfqs" | "orders" | "tracking" | "suppliers" | "businesses" | "company";
-type Product = { id: string; name: string; category: string; price: number; min: number; stock: string; color: string; initials: string; };
+type Product = { id: string; name: string; category: string; price: number; min: number; stock: string; color: string; initials: string; isDemo?: boolean; priceUsd?: number | null; supplier?: string; governorate?: string; };
 const nav: { id: Section; label: string; icon: string }[] = [
   { id: "overview", label: "الرئيسية", icon: "⌂" },
   { id: "products", label: "كتالوج الجملة", icon: "▦" },
@@ -53,7 +53,7 @@ export default function App() {
         id: p.id, name: p.name, category: p.category?.name_ar ?? "غير مصنف",
         price: Number(p.price), min: p.min_order_quantity,
         stock: p.stock_quantity > 0 ? "متوفر" : "غير متوفر",
-        color: "mint", initials: p.name.slice(0, 5),
+        color: "mint", initials: p.name.slice(0, 5), isDemo: p.is_demo, priceUsd: p.price_usd, supplier: p.supplier_name, governorate: p.governorate_name,
       }))); })
       .catch(error => { if (active) setNotice(error instanceof Error ? `تعذر تحميل الكتالوج: ${error.message}` : "تعذر تحميل الكتالوج."); })
       .finally(() => { if (active) setCatalogLoading(false); });
@@ -106,7 +106,7 @@ export default function App() {
         {showAuth && <section className="auth-panel"><div><b>الدخول إلى حسابك</b><p>تسجيل الدخول الآمن عبر Supabase.</p></div><input type="email" placeholder="البريد الإلكتروني" value={email} onChange={e => setEmail(e.target.value)} /><input type="password" placeholder="كلمة المرور" value={password} onChange={e => setPassword(e.target.value)} /><button className="primary" disabled={authBusy} onClick={signIn}>{authBusy ? "جارٍ الدخول..." : "دخول"}</button></section>}
         {section === "overview" && <>
           {catalogLoading && <div className="notice">جارٍ تحميل المنتجات الحقيقية من قاعدة البيانات...</div>}
-          {!catalogLoading && products.length === 0 && <div className="notice">لا توجد منتجات منشورة من موردين معتمدين حالياً. أضف أول مورد ومنتجاته لعرضها هنا.</div>}
+          {!catalogLoading && products.length === 0 && <div className="notice">لا توجد منتجات من موردين معتمدين بعد. يعرض تاجر الآن كتالوجاً تجريبياً للمعاينة فقط؛ لا يمكن الشراء من بيانات العرض.</div>}
           <div className="stat-grid">
             <Stat label="منتجات في الكتالوج" value={String(products.length).padStart(2, "0")} delta="بيانات حقيقية من قاعدة البيانات" icon="▦" />
             <Stat label="منتجات في طلبك" value={String(cart.length)} delta={`${cartCount} قطعة إجمالاً`} icon="▤" />
@@ -128,12 +128,12 @@ export default function App() {
         {section === "tracking" && <LiveTrackingMap />}
         {section === "orders" && <OrdersWorkspace businessId={activeBusinessId} onOpenRfq={() => setSection("rfqs")} onReorder={() => { setSection("products"); setNotice("اختر المنتجات والكميات لإنشاء طلب جديد؛ إعادة إنشاء الطلب السابق آلياً ستضاف بعد ربط دورة الطلب بالمخزون والحجوزات."); }} />}
         {section === "suppliers" && <Empty title="بوابة الموردين" desc="سيتمكن المورد من إنشاء ملف شركته وإضافة المنتجات وإدارة عروض الأسعار." action={() => setNotice("تسجيل الموردين قيد التنفيذ ضمن المرحلة التالية.")} />}
-        <footer>© 2026 تاجر · منصة التجارة بالجملة في العراق <span>نسخة تطوير أولية</span></footer>
+        <footer>© 2026 تاجر · منصة التجارة بالجملة في العراق <span>كتالوج العرض تجريبي — لا يمثل عروضاً أو مخزوناً مؤكداً</span></footer>
       </div>
     </main>
   </div>;
 }
 function Stat({ label, value, delta, icon }: { label: string; value: string; delta: string; icon: string }) { return <div className="stat-card"><div className="stat-top"><span>{label}</span><i>{icon}</i></div><strong>{value}</strong><small>{delta}</small></div>; }
-function ProductGrid({ items, onAdd }: { items: Product[]; onAdd: (p: Product) => void }) { return <div className="product-grid">{items.length ? items.map(p => <article className="product-card" key={p.id}><div className={`product-art ${p.color}`}><span>{p.initials}</span><small>صورة توضيحية</small></div><div className="product-info"><small>{p.category}</small><h3>{p.name}</h3><div className="product-price">{money(p.price)} <span>/ للقطعة · تقديري</span></div><div className="product-foot"><span>الحد الأدنى: {p.min} قطعة</span><b className={p.stock === "متوفر" ? "in-stock" : "low-stock"}>{p.stock}</b></div><button className="outline" style={{width:"100%",marginTop:12}} onClick={() => onAdd(p)}>＋ أضف لطلب السعر</button></div></article>) : <div className="empty">لا توجد نتائج مطابقة لبحثك.</div>}</div>; }
+function ProductGrid({ items, onAdd }: { items: Product[]; onAdd: (p: Product) => void }) { return <div className="product-grid">{items.length ? items.map(p => <article className="product-card" key={p.id}><div className={`product-art ${p.color}`}><span>{p.initials}</span><small>صورة توضيحية</small></div><div className="product-info"><small>{p.category}</small><h3>{p.name}</h3><div className="product-price">{money(p.price)} <span>/ للقطعة {p.isDemo ? `· ≈ ${Number(p.priceUsd ?? p.price / 1520).toFixed(2)} عرض تجريبي` : "· تقديري"}</span></div>{p.isDemo && <small>مورد عرض: {p.supplier} · {p.governorate}</small> }<div className="product-foot"><span>الحد الأدنى: {p.min} قطعة</span><b className={p.stock === "متوفر" ? "in-stock" : "low-stock"}>{p.stock}</b></div><button className="outline" style={{width:"100%",marginTop:12}} onClick={() => onAdd(p)}>＋ أضف للسلة التجريبية</button></div></article>) : <div className="empty">لا توجد نتائج مطابقة لبحثك.</div>}</div>; }
 function Activity({ title, sub, time }: { title: string; sub: string; time: string }) { return <div className="activity"><i/><div><b>{title}</b><small>{sub}</small></div><time>{time}</time></div>; }
 function Empty({ title, desc, action }: { title: string; desc: string; action?: () => void }) { return <div className="empty-state"><div>▤</div><h2>{title}</h2><p>{desc}</p>{action && <button className="primary" onClick={action}>تصفح المنتجات</button>}</div>; }
