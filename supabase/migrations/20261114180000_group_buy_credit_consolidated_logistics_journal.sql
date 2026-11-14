@@ -361,10 +361,23 @@ create trigger product_price_tiers_validate
 before insert or update of product_id, min_quantity, unit_price
 on public.product_price_tiers
 for each row execute function public.validate_product_price_tier();
+-- RLS policy expressions depend on rfq_offers.unit_price/total_price.
+-- Drop only the dependent insert policy for the duration of the type conversion,
+-- then restore the exact tenant and price validation predicate.
+drop policy if exists rfq_offers_supplier_insert on public.rfq_offers;
 alter table public.rfq_offers
   alter column unit_price type numeric(19,4) using unit_price::numeric(19,4),
   alter column total_price type numeric(19,4) using total_price::numeric(19,4),
   alter column quantity type numeric(19,4) using quantity::numeric(19,4);
+create policy rfq_offers_supplier_insert on public.rfq_offers for insert to authenticated
+with check (
+  status='submitted'
+  and total_price is not null
+  and total_price>0
+  and unit_price>0
+  and (delivery_days is null or delivery_days>0)
+  and private.can_submit_rfq_offer(rfq_id,supplier_business_id,quantity)
+);
 alter table public.orders
   alter column total_amount type numeric(19,4) using total_amount::numeric(19,4);
 alter table public.order_items
