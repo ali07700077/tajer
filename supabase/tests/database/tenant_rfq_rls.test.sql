@@ -3,7 +3,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(35);
+select plan(57);
 
 insert into auth.users
   (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
@@ -220,6 +220,41 @@ select ok(
   ),
   'supplier orders can be linked to one parent checkout session'
 );
+
+
+-- Group-buy, B2B credit, consolidated logistics and balanced journal foundations.
+select ok(to_regclass('public.group_buy_campaigns') is not null,'group-buy campaigns table exists');
+select ok(to_regclass('public.group_buy_participants') is not null,'group-buy participants table exists');
+select ok(to_regclass('public.b2b_credit_accounts') is not null,'B2B credit accounts table exists');
+select ok(to_regclass('public.b2b_credit_transactions') is not null,'B2B credit transactions table exists');
+select ok(to_regclass('public.financial_journal_transactions') is not null,'financial journal transaction table exists');
+select ok(to_regclass('public.financial_journal_lines') is not null,'financial journal lines table exists');
+select ok(to_regclass('public.consolidated_shipments') is not null,'consolidated shipments table exists');
+select ok(to_regclass('public.consolidated_shipment_orders') is not null,'shipment-to-order relation table exists');
+select is(
+ (select count(*)::integer from pg_class where oid in (
+  'public.group_buy_campaigns'::regclass,'public.group_buy_participants'::regclass,
+  'public.b2b_credit_accounts'::regclass,'public.b2b_credit_transactions'::regclass,
+  'public.financial_journal_transactions'::regclass,'public.financial_journal_lines'::regclass,
+  'public.consolidated_shipments'::regclass,'public.consolidated_shipment_orders'::regclass
+ ) and relrowsecurity),
+ 8,'all new commercial and financial tables enforce row level security'
+);
+select ok(has_function_privilege('authenticated','public.join_group_buy(uuid,uuid,integer,text)','EXECUTE'),'authenticated buyers can join a group-buy campaign through the RPC');
+select ok(not has_function_privilege('anon','public.join_group_buy(uuid,uuid,integer,text)','EXECUTE'),'anonymous visitors cannot join group-buy campaigns');
+select ok(has_function_privilege('service_role','public.post_order_escrow_journal(uuid,text,numeric,text,text,jsonb)','EXECUTE'),'only the payment service role can post escrow journal entries');
+select ok(not has_function_privilege('authenticated','public.post_order_escrow_journal(uuid,text,numeric,text,text,jsonb)','EXECUTE'),'authenticated clients cannot post financial journal entries');
+select is((select numeric_precision::integer from information_schema.columns where table_schema='public' and table_name='escrow_ledger_entries' and column_name='amount'),19,'escrow event ledger uses 19-digit financial precision');
+select is((select numeric_scale::integer from information_schema.columns where table_schema='public' and table_name='escrow_ledger_entries' and column_name='amount'),4,'escrow event ledger stores four fractional digits');
+select is((select numeric_precision::integer from information_schema.columns where table_schema='public' and table_name='financial_journal_transactions' and column_name='amount'),19,'journal transaction amounts use NUMERIC(19,4)');
+select is((select numeric_scale::integer from information_schema.columns where table_schema='public' and table_name='financial_journal_lines' and column_name='debit'),4,'journal debit and credit amounts use four fractional digits');
+select is((select count(*)::integer from pg_trigger where tgname in ('financial_journal_transactions_immutable','financial_journal_lines_immutable')),2,'journal header and lines are protected against mutation');
+select ok(not has_table_privilege('authenticated','public.financial_journal_lines','INSERT'),'clients cannot insert financial journal lines directly');
+select ok(not has_table_privilege('authenticated','public.b2b_credit_transactions','INSERT'),'clients cannot write credit transactions directly');
+select ok(not has_table_privilege('authenticated','public.consolidated_shipments','INSERT'),'clients cannot create carrier shipment batches directly');
+select ok(has_table_privilege('authenticated','public.group_buy_campaigns','SELECT'),'authenticated users can browse group-buy campaigns under RLS');
+select ok(has_table_privilege('authenticated','public.b2b_credit_accounts','SELECT'),'business buyers can read their credit facility under RLS');
+select ok(has_table_privilege('authenticated','public.consolidated_shipments','SELECT'),'business buyers can read their consolidated shipments under RLS');
 
 select * from finish();
 rollback;
