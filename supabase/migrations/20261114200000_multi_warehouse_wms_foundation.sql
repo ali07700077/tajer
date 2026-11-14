@@ -162,12 +162,12 @@ on conflict(warehouse_id,product_id) do nothing;
 insert into public.commercial_areas(city_id,code,name_ar,name_en,area_type,description_ar,sort_order)
 select c.id,v.code,v.name_ar,v.name_en,v.area_type,v.description_ar,v.sort_order
 from (values
- ('wasit','الكوت','الكوت','Kut','commercial_district','مركز تجاري وخدمي في مدينة الكوت',1,'wasit'),
- ('basra','البصرة','العشار','Al-Ashar','commercial_district','منطقة تجارية مركزية في البصرة',2,'basra'),
- ('basra','البصرة','سوق المغايز','Al-Maghayiz Market','wholesale_market','منطقة أسواق وتجارة في البصرة',3,'basra'),
- ('erbil','أربيل','سوق القيصرية','Qaysari Bazaar','retail_market','سوق تجاري تقليدي في أربيل',4,'erbil'),
- ('erbil','أربيل','المنطقة الصناعية','Industrial Area','industrial_zone','منطقة الأنشطة الصناعية والتجارية في أربيل',5,'erbil')
-) as v(governorate_code,city_name,name_ar,name_en,area_type,description_ar,sort_order,city_code)
+ ('wasit','الكوت','kut','الكوت','Kut','commercial_district','مركز تجاري وخدمي في مدينة الكوت',1),
+ ('basra','البصرة','al-ashar','العشار','Al-Ashar','commercial_district','منطقة تجارية مركزية في البصرة',2),
+ ('basra','البصرة','al-maghayiz-market','سوق المغايز','Al-Maghayiz Market','wholesale_market','منطقة أسواق وتجارة في البصرة',3),
+ ('erbil','أربيل','qaysari-bazaar','سوق القيصرية','Qaysari Bazaar','retail_market','سوق تجاري تقليدي في أربيل',4),
+ ('erbil','أربيل','erbil-industrial-area','المنطقة الصناعية','Industrial Area','industrial_zone','منطقة الأنشطة الصناعية والتجارية في أربيل',5)
+) as v(governorate_code,city_name,code,name_ar,name_en,area_type,description_ar,sort_order)
 join public.governorates g on g.code=v.governorate_code
 join public.cities c on c.governorate_id=g.id and c.name_ar=v.city_name
 on conflict(code) do update set
