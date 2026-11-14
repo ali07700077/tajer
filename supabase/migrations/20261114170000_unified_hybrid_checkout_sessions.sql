@@ -139,6 +139,20 @@ begin
   if jsonb_array_length(p_wholesale_items) > 0 and p_buyer_business_id is null then
     raise exception 'اختر ملف شركة مشتري لطلب الجملة' using errcode = '22023';
   end if;
+  if p_buyer_business_id is not null and not public.has_business_role(
+    p_buyer_business_id,
+    array['owner'::public.member_role,'manager'::public.member_role]
+  ) then
+    raise exception 'ليس لديك صلاحية استخدام ملف شركة المشتري' using errcode = '42501';
+  end if;
+  if exists (
+    select 1
+    from jsonb_array_elements(p_retail_items) retail_item
+    join jsonb_array_elements(p_wholesale_items) wholesale_item
+      on retail_item.value->>'product_id' = wholesale_item.value->>'product_id'
+  ) then
+    raise exception 'لا يمكن إضافة المنتج نفسه إلى مساري المفرد والجملة في عملية شراء واحدة' using errcode = '22023';
+  end if;
 
   insert into public.checkout_sessions (
     buyer_user_id, buyer_business_id, delivery_address, expires_at
