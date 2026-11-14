@@ -162,7 +162,6 @@ insert into public.commercial_areas(city_id,code,name_ar,name_en,area_type,descr
 select c.id,v.code,v.name_ar,v.name_en,v.area_type,v.description_ar,v.sort_order
 from public.cities c
 join public.governorates g on g.id=c.governorate_id and g.code='baghdad'
-where c.name_ar='بغداد'
 cross join (values
  ('al-shorja','الشورجة','Al-Shorja','wholesale_market','منطقة أسواق الجملة والتجارة المركزية',1),
  ('jameela-market','سوق جميلة','Jameela Market','wholesale_market','منطقة تجارة الجملة والمواد الغذائية',2),
@@ -174,6 +173,7 @@ cross join (values
  ('arasat-commercial','عرصات الهندية','Arasat Al-Hindiya','commercial_district','منطقة تجارية وخدمية',8),
  ('zayouna-commercial','زيونة التجارية','Zayouna Commercial','commercial_district','منطقة تجارية وخدمية',9)
 ) as v(code,name_ar,name_en,area_type,description_ar,sort_order)
+where c.name_ar='بغداد'
 on conflict(code) do update set
  name_ar=excluded.name_ar,name_en=excluded.name_en,area_type=excluded.area_type,
  description_ar=excluded.description_ar,is_active=true,sort_order=excluded.sort_order;
