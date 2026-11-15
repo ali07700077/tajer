@@ -1,0 +1,58 @@
+name: TAJER AI architecture review
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Bounded engineering question or task (no secrets)"
+        required: true
+        type: string
+      max_context_chars:
+        description: "Maximum repository context sent to the providers"
+        required: false
+        default: "30000"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tajer-ai-review-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dual-review:
+    if: github.ref == 'refs/heads/implementation/bootstrap'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install HTTP client
+        run: python -m pip install --disable-pip-version-check requests==2.32.5
+
+      - name: Run bounded dual-provider review
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TASK: ${{ inputs.task }}
+          MAX_CONTEXT_CHARS: ${{ inputs.max_context_chars }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: python scripts/ai/dual_review.py
+
+      - name: Upload review report
+        uses: actions/upload-artifact@v4
+        with:
+          name: tajer-dual-ai-review-${{ github.run_id }}
+          path: .ai/runs/
+          if-no-files-found: error
+          retention-days: 14
