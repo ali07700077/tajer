@@ -76,7 +76,7 @@ def call_openai() -> str:
     response = requests.post(
         "https://api.openai.com/v1/responses",
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={"model": "gpt-6", "input": [{"role": "system", "content": system}, {"role": "user", "content": user}]},
+        json={"model": "gpt-6.1-sol", "input": [{"role": "system", "content": system}, {"role": "user", "content": user}]},
         timeout=90,
     )
     response.raise_for_status()
@@ -95,7 +95,7 @@ def call_anthropic() -> str:
     response = requests.post(
         "https://api.anthropic.com/v1/messages",
         headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-        json={"model": "claude-sonnet-4-5", "max_tokens": 5000, "system": system, "messages": [{"role": "user", "content": user}]},
+        json={"model": "claude-opus-5-5", "max_tokens": 5000, "system": system, "messages": [{"role": "user", "content": user}]},
         timeout=90,
     )
     response.raise_for_status()
